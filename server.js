@@ -30,6 +30,7 @@ if(!dbExists){
       address TEXT,
       items TEXT,
       total INTEGER,
+      status TEXT DEFAULT 'new',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`);
     console.log('Database and table created.');
@@ -99,9 +100,49 @@ app.post('/api/orders', (req, res) => {
 
 // --- API: список заказов ---
 app.get('/api/orders', (req, res) => {
-  db.all('SELECT id,name,phone,address,items,total,created_at FROM orders ORDER BY id DESC', [], (err, rows)=>{
+  db.all('SELECT id,name,phone,address,items,total,status,created_at FROM orders ORDER BY id DESC', [], (err, rows)=>{
     if(err) return res.status(500).send('db error');
     res.json(rows.map(r => ({...r, items: JSON.parse(r.items||'{}')})));
+  });
+});
+
+// --- API: обновление статуса заказа ---
+app.put('/api/orders/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  
+  if (!['new', 'processing', 'completed', 'cancelled'].includes(status)) {
+    return res.status(400).send('Invalid status');
+  }
+
+  db.run('UPDATE orders SET status = ? WHERE id = ?', [status, id], function(err) {
+    if(err) return res.status(500).send('db error');
+    res.json({ success: true, changes: this.changes });
+  });
+});
+
+// --- API: удаление заказа ---
+app.delete('/api/orders/:id', (req, res) => {
+  const { id } = req.params;
+  
+  db.run('DELETE FROM orders WHERE id = ?', [id], function(err) {
+    if(err) return res.status(500).send('db error');
+    res.json({ success: true, changes: this.changes });
+  });
+});
+
+// --- API: создание заказа через админку ---
+app.post('/api/admin/orders', (req, res) => {
+  const { name, phone, address, items, total } = req.body || {};
+  if(!name || !phone) return res.status(400).send('name and phone are required');
+
+  const stmt = db.prepare(`INSERT INTO orders (name,phone,address,items,total) VALUES (?,?,?,?,?)`);
+  stmt.run(name, phone, address || '', JSON.stringify(items||{}), total || 0, function(err){
+    if(err) {
+      console.error(err);
+      return res.status(500).send('db error');
+    }
+    res.json({ id: this.lastID });
   });
 });
 
@@ -113,14 +154,6 @@ app.get('/', (req, res) => {
 // --- Simple admin page ---
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-// Создаем простую админ-страницу если её нет
-app.get('/admin-data', (req, res) => {
-  db.all('SELECT id,name,phone,address,items,total,created_at FROM orders ORDER BY id DESC', [], (err, rows)=>{
-    if(err) return res.status(500).send('db error');
-    res.json(rows);
-  });
 });
 
 const PORT = process.env.PORT || 3000;

@@ -29,6 +29,16 @@
             font-weight: bold;
             color: #2b6cb0;
         }
+        .admin-actions {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
         .filters {
             background: white;
             padding: 15px;
@@ -71,6 +81,7 @@
             display: flex;
             gap: 10px;
             margin-top: 15px;
+            flex-wrap: wrap;
         }
         .status-new { border-left-color: #2b6cb0; }
         .status-processing { border-left-color: #ecc94b; }
@@ -100,14 +111,39 @@
             padding: 40px;
             color: #6b7280;
         }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .form-row input {
+            flex: 1;
+        }
+        .product-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
         @media (max-width: 768px) {
-            .filters {
+            .filters, .admin-actions {
                 flex-direction: column;
                 align-items: stretch;
             }
             .order-header {
                 flex-direction: column;
                 align-items: flex-start;
+            }
+            .order-actions {
+                flex-direction: column;
             }
         }
     </style>
@@ -124,6 +160,7 @@
         <div class="controls">
             <button class="btn secondary" onclick="location.href='/'">На сайт</button>
             <button class="btn" onclick="exportOrders()">Экспорт</button>
+            <button class="btn" onclick="showAddOrderModal()">+ Добавить заказ</button>
         </div>
     </header>
 
@@ -148,6 +185,12 @@
             </div>
         </div>
 
+        <!-- Действия администратора -->
+        <div class="admin-actions">
+            <button class="btn secondary" onclick="loadOrders()">Обновить</button>
+            <button class="btn secondary" onclick="clearFilters()">Сбросить фильтры</button>
+        </div>
+
         <!-- Фильтры -->
         <div class="filters">
             <div class="search-box">
@@ -162,8 +205,6 @@
             </select>
             <input type="date" id="date-from" style="padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
             <input type="date" id="date-to" style="padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
-            <button class="btn secondary" onclick="clearFilters()">Сбросить</button>
-            <button class="btn" onclick="loadOrders()">Обновить</button>
         </div>
 
         <!-- Список заказов -->
@@ -186,6 +227,56 @@
             <div class="modal-actions">
                 <button class="btn secondary" onclick="closeStatusModal()">Отмена</button>
                 <button class="btn" onclick="updateOrderStatus()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для добавления заказа -->
+    <div id="add-order-modal" class="modal" style="display: none;">
+        <div class="modal-card" style="max-width: 600px;">
+            <h3>Добавить новый заказ</h3>
+            
+            <div class="form-group">
+                <label>Клиент</label>
+                <input type="text" id="new-order-name" placeholder="ФИО клиента" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label>Телефон</label>
+                <input type="text" id="new-order-phone" placeholder="Номер телефона" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label>Адрес доставки</label>
+                <input type="text" id="new-order-address" placeholder="Адрес доставки" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label>Товары</label>
+                <div id="new-order-items">
+                    <div class="product-item">
+                        <div class="form-row">
+                            <select class="product-select" style="flex: 2;">
+                                <option value="1">Цемент Шымкент 450 - 2,050 ₸</option>
+                                <option value="2">Цемент Шымкент 500 - 2,100 ₸</option>
+                                <option value="3">Цемент Стандарт 450 - 2,000 ₸</option>
+                                <option value="4">Цемент Аккерман - 2,200 ₸</option>
+                            </select>
+                            <input type="number" class="product-qty" placeholder="Кол-во" min="1" value="1" style="flex: 1;">
+                            <button class="btn secondary" onclick="removeProductItem(this)">×</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn secondary" onclick="addProductItem()" style="margin-top: 10px;">+ Добавить товар</button>
+            </div>
+            
+            <div class="form-group">
+                <label>Итого: <span id="new-order-total">0</span> ₸</label>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="closeAddOrderModal()">Отмена</button>
+                <button class="btn" onclick="createOrder()">Создать заказ</button>
             </div>
         </div>
     </div>
@@ -276,7 +367,7 @@
                     
                     <div class="order-items">
                         <strong>Товары:</strong>
-                        ${Object.entries(JSON.parse(order.items || '{}')).map(([id, qty]) => `
+                        ${Object.entries(order.items).map(([id, qty]) => `
                             <div class="order-item">
                                 <span>${getProductName(parseInt(id))}</span>
                                 <span>${qty} шт × ${getProductPrice(parseInt(id))} ₸ = <strong>${(getProductPrice(parseInt(id)) * qty).toLocaleString('ru-RU')} ₸</strong></span>
@@ -332,13 +423,13 @@
                 1: 'Цемент Шымкент 450',
                 2: 'Цемент Шымкент 500', 
                 3: 'Цемент Стандарт 450',
-                4: ''
+                4: 'Цемент Аккерман'
             };
             return products[id] || `Товар #${id}`;
         }
 
         function getProductPrice(id) {
-            const prices = {1: 9000, 2: 10500, 3: 5200, 4: 12500};
+            const prices = {1: 2050, 2: 2100, 3: 2000, 4: 2200};
             return prices[id] || 0;
         }
 
@@ -346,6 +437,13 @@
         function changeStatus(orderId) {
             currentEditingOrderId = orderId;
             document.getElementById('modal-order-id').textContent = orderId;
+            
+            // Устанавливаем текущий статус
+            const order = allOrders.find(o => o.id === orderId);
+            if (order) {
+                document.getElementById('new-status').value = order.status || 'new';
+            }
+            
             document.getElementById('status-modal').style.display = 'grid';
         }
 
@@ -357,32 +455,59 @@
         async function updateOrderStatus() {
             const newStatus = document.getElementById('new-status').value;
             
-            // Здесь можно добавить API для обновления статуса
-            // Пока просто обновляем локально
-            const order = allOrders.find(o => o.id === currentEditingOrderId);
-            if (order) {
-                order.status = newStatus;
-                applyFilters();
-                updateStats();
-            }
-            
-            closeStatusModal();
-            alert(`Статус заказа #${currentEditingOrderId} изменен на "${getStatusText(newStatus)}"`);
-        }
+            try {
+                const response = await fetch(`/api/orders/${currentEditingOrderId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
 
-        function callCustomer(phone) {
-            window.open(`tel:${phone}`, '_self');
+                if (response.ok) {
+                    // Обновляем локально
+                    const order = allOrders.find(o => o.id === currentEditingOrderId);
+                    if (order) {
+                        order.status = newStatus;
+                        applyFilters();
+                        updateStats();
+                    }
+                    closeStatusModal();
+                    alert(`Статус заказа #${currentEditingOrderId} изменен на "${getStatusText(newStatus)}"`);
+                } else {
+                    alert('Ошибка при обновлении статуса');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при обновлении статуса');
+            }
         }
 
         async function deleteOrder(orderId) {
             if (!confirm(`Удалить заказ #${orderId}?`)) return;
             
-            // Здесь можно добавить API для удаления заказа
-            // Пока просто удаляем локально
-            allOrders = allOrders.filter(order => order.id !== orderId);
-            applyFilters();
-            updateStats();
-            alert(`Заказ #${orderId} удален`);
+            try {
+                const response = await fetch(`/api/orders/${orderId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    // Удаляем локально
+                    allOrders = allOrders.filter(order => order.id !== orderId);
+                    applyFilters();
+                    updateStats();
+                    alert(`Заказ #${orderId} удален`);
+                } else {
+                    alert('Ошибка при удалении заказа');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при удалении заказа');
+            }
+        }
+
+        function callCustomer(phone) {
+            window.open(`tel:${phone}`, '_self');
         }
 
         function clearFilters() {
@@ -391,6 +516,114 @@
             document.getElementById('date-from').value = '';
             document.getElementById('date-to').value = '';
             applyFilters();
+        }
+
+        // Функции для добавления заказа
+        function showAddOrderModal() {
+            document.getElementById('add-order-modal').style.display = 'grid';
+            calculateNewOrderTotal();
+        }
+
+        function closeAddOrderModal() {
+            document.getElementById('add-order-modal').style.display = 'none';
+        }
+
+        function addProductItem() {
+            const container = document.getElementById('new-order-items');
+            const newItem = document.createElement('div');
+            newItem.className = 'product-item';
+            newItem.innerHTML = `
+                <div class="form-row">
+                    <select class="product-select" style="flex: 2;" onchange="calculateNewOrderTotal()">
+                        <option value="1">Цемент Шымкент 450 - 2,050 ₸</option>
+                        <option value="2">Цемент Шымкент 500 - 2,100 ₸</option>
+                        <option value="3">Цемент Стандарт 450 - 2,000 ₸</option>
+                        <option value="4">Цемент быстротвердеющий - 12,500 ₸</option>
+                    </select>
+                    <input type="number" class="product-qty" placeholder="Кол-во" min="1" value="1" 
+                           style="flex: 1;" onchange="calculateNewOrderTotal()">
+                    <button class="btn secondary" onclick="removeProductItem(this)">×</button>
+                </div>
+            `;
+            container.appendChild(newItem);
+            calculateNewOrderTotal();
+        }
+
+        function removeProductItem(button) {
+            if (document.querySelectorAll('.product-item').length > 1) {
+                button.closest('.product-item').remove();
+                calculateNewOrderTotal();
+            }
+        }
+
+        function calculateNewOrderTotal() {
+            let total = 0;
+            document.querySelectorAll('.product-item').forEach(item => {
+                const productId = item.querySelector('.product-select').value;
+                const qty = parseInt(item.querySelector('.product-qty').value) || 0;
+                total += getProductPrice(parseInt(productId)) * qty;
+            });
+            document.getElementById('new-order-total').textContent = total.toLocaleString('ru-RU');
+        }
+
+        async function createOrder() {
+            const name = document.getElementById('new-order-name').value.trim();
+            const phone = document.getElementById('new-order-phone').value.trim();
+            const address = document.getElementById('new-order-address').value.trim();
+
+            if (!name || !phone) {
+                alert('Введите имя и телефон клиента');
+                return;
+            }
+
+            // Собираем товары
+            const items = {};
+            document.querySelectorAll('.product-item').forEach(item => {
+                const productId = item.querySelector('.product-select').value;
+                const qty = parseInt(item.querySelector('.product-qty').value) || 0;
+                if (qty > 0) {
+                    items[productId] = qty;
+                }
+            });
+
+            if (Object.keys(items).length === 0) {
+                alert('Добавьте хотя бы один товар');
+                return;
+            }
+
+            const total = parseInt(document.getElementById('new-order-total').textContent.replace(/\s/g, '')) || 0;
+
+            try {
+                const response = await fetch('/api/admin/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name,
+                        phone,
+                        address,
+                        items,
+                        total
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Заказ успешно создан!');
+                    closeAddOrderModal();
+                    loadOrders(); // Перезагружаем список заказов
+                    
+                    // Очищаем форму
+                    document.getElementById('new-order-name').value = '';
+                    document.getElementById('new-order-phone').value = '';
+                    document.getElementById('new-order-address').value = '';
+                } else {
+                    alert('Ошибка при создании заказа');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при создании заказа');
+            }
         }
 
         function exportOrders() {
@@ -405,7 +638,7 @@
                 `"${order.name}"`,
                 order.phone,
                 `"${order.address || ''}"`,
-                `"${Object.entries(JSON.parse(order.items || '{}')).map(([id, qty]) => `${getProductName(parseInt(id))} (${qty}шт)`).join(', ')}"`,
+                `"${Object.entries(order.items).map(([id, qty]) => `${getProductName(parseInt(id))} (${qty}шт)`).join(', ')}"`,
                 order.total,
                 new Date(order.created_at).toLocaleString('ru-RU'),
                 getStatusText(order.status)

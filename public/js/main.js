@@ -1,8 +1,9 @@
 
 const PRODUCTS = [
-  {id:1,name:'Цемент Шымкент 450',price:2000,img:'/assets/450ch.jpg',desc:'Подходит для общих строительных работ'},
-  {id:2,name:'Цемент Шымкент 500',price:2100,img:'/assets/500ch.jpg',desc:'Высокопрочный цемент '},
-  {id:3,name:'Цемент Стандарт 450',price:2000,img:'/assets/450st.jpg',desc:'Малые фасовки для мелких работ'},
+  {id:1,name:'Цемент Шымкент 450',price:2000,img:'/assets/450ch.jpg'},
+  {id:2,name:'Цемент Шымкент 500',price:2100,img:'/assets/500ch.jpg'},
+  {id:3,name:'Цемент Стандарт 450',price:2000,img:'/assets/450st.jpg'},
+  {id:4,name:'Цемент Аккерман 500',price:2200,img:'/assets/500akk.jpg'},
 ];
 
 const cart = JSON.parse(localStorage.getItem('cart')||'{}');
@@ -18,25 +19,23 @@ function renderProducts(list){
   list.forEach(p=>{
     const el = document.createElement('div'); 
     el.className='card';
-    el.innerHTML = `
-      <img src="${p.img}" alt="${p.name}" />
-      <div class="body">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-weight:700">${p.name}</div>
-            <div class="muted" style="font-size:13px">${p.desc}</div>
-          </div>
-          <div style="text-align:right">
-            <div class="price">${p.price.toLocaleString('ru-RU')} ₸</div>
-            <div class="muted"></div>
-          </div>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:8px;justify-content:space-between;align-items:center">
-          <div class="muted">В наличии: да</div>
-          <div><button class="btn" data-id="${p.id}">В корзину</button></div>
-        </div>
+   el.innerHTML = `
+  <img src="${p.img}" alt="${p.name}" />
+  <div class="body">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <div style="flex:1">
+        <div style="font-weight:700;margin-bottom:4px">${p.name}</div>
       </div>
-    `;
+      <div style="text-align:right;flex-shrink:0">
+        <div class="price" style="white-space:nowrap">${p.price.toLocaleString('ru-RU')} ₸</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;justify-content:space-between;align-items:center">
+      <div class="muted">В наличии: да</div>
+      <div><button class="btn" data-id="${p.id}">В корзину</button></div>
+    </div>
+  </div>
+`;
     out.appendChild(el);
   });
   
@@ -178,7 +177,7 @@ renderCart();
 // Поиск
 document.getElementById('search').addEventListener('input', e=>{
   const q = e.target.value.trim().toLowerCase();
-  const filtered = PRODUCTS.filter(p=> (p.name + ' ' + p.desc).toLowerCase().includes(q));
+  const filtered = PRODUCTS.filter(p=> (p.name + ' ').toLowerCase().includes(q));
   renderProducts(filtered);
 });
 
