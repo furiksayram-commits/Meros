@@ -1,18 +1,18 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Магазин цемента — Мерос</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Магазин цемента  Мерос</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <header>
+    <button class="hamburger-btn" id="hamburger-btn" onclick="toggleCategoriesMenu()"></button>
     <div class="brand">
       <div class="logo">М</div>
       <div>
-        <h1>Магазин цемента — <small>Мерос</small></h1>
-        <div class="muted">Доставка по городу • Оплата наличными и картой</div>
+        <h1>Магазин цемента  <small>Мерос</small></h1>
       </div>
     </div>
     <div class="controls">
@@ -21,25 +21,19 @@
   </header>
 
   <main>
-    <!-- Гамбургер кнопка для мобильных -->
-    <button class="hamburger-btn" id="hamburger-btn" onclick="toggleCategoriesMenu()">☰</button>
-    
-    <!-- Оверлей для закрытия меню -->
     <div class="categories-overlay" id="categories-overlay" onclick="toggleCategoriesMenu()"></div>
     
     <div class="main-wrapper">
-      <!-- Боковое меню с категориями -->
       <aside class="categories-sidebar" id="categories-sidebar">
-        <h3>📂 Категории</h3>
+        <h3> Категории</h3>
         <div id="categories-list" class="categories-list">
           <div class="category-item active" data-category="all">
-            <span class="category-icon">🏪</span>
+            <span class="category-icon"></span>
             <span>Все товары</span>
           </div>
         </div>
       </aside>
 
-      <!-- Основной контент -->
       <div class="main-content">
         <section class="hero">
           <input type="search" id="search" placeholder="Поиск: цемент, марка..." />
@@ -48,7 +42,6 @@
 
         <section>
           <div class="grid" id="products"></div>
-          <!-- Пагинация -->
           <div id="pagination"></div>
         </section>
       </div>
@@ -57,14 +50,14 @@
 
   <aside class="cart" id="cart" style="display:none">
   <div class="cart-header">
-    <h3>🛒 Корзина</h3>
-    <button class="btn secondary" id="close-cart">✕</button>
+    <h3> Корзина</h3>
+    <button class="btn secondary" id="close-cart"></button>
   </div>
   <div id="cart-items"></div>
   <div class="footer">
     <div>
       <div class="muted small">Итого:</div>
-      <div id="cart-total" class="total">0 ₸</div>
+      <div id="cart-total" class="total">0 </div>
     </div>
     <div>
       <button class="btn" id="checkout">Оформить</button>
@@ -82,16 +75,14 @@
       <input id="name" placeholder="ФИО" />
       <input id="phone" placeholder="Телефон" />
       
-      <!-- Поле адреса с кнопкой геолокации -->
       <div style="position: relative; margin-bottom: 10px;">
         <input id="address" placeholder="Адрес доставки" style="padding-right: 45px;" />
-        <button id="get-location" class="btn-location" title="Получить мою геолокацию">📍</button>
+        <button id="get-location" class="btn-location" title="Получить мою геолокацию"></button>
       </div>
       
-      <!-- Показываем координаты если есть -->
       <div id="location-info" style="display: none; margin-bottom: 10px; padding: 8px; background: #e8f5e9; border-radius: 6px; font-size: 13px;">
-        <strong>📌 Координаты:</strong> <span id="coordinates"></span><br>
-        <a id="map-link" href="#" target="_blank" style="color: #2b6cb0; text-decoration: none;">🗺️ Открыть на карте</a>
+        <strong> Координаты:</strong> <span id="coordinates"></span><br>
+        <a id="map-link" href="#" target="_blank" style="color: #2b6cb0; text-decoration: none;"> Открыть на карте</a>
       </div>
       
       <div class="modal-actions">
