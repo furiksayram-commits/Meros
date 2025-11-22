@@ -67,9 +67,9 @@ function toggleCategoriesMenu() {
   overlay.classList.toggle('active');
   
   if (sidebar.classList.contains('open')) {
-    btn.textContent = '✕';
+    btn.classList.add('open');
   } else {
-    btn.textContent = '☰';
+    btn.classList.remove('open');
   }
 }
 
