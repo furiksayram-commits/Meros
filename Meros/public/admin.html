@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ панель - Магазин цемента</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Экран авторизации */
+        .login-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #2b6cb0, #1e3a8a);
+            display: grid;
+            place-items: center;
+            z-index: 9999;
+        }
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+        .login-card h2 {
+            margin: 0 0 10px 0;
+            color: #2b6cb0;
+        }
+        .login-card .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        .login-card input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        .login-card input:focus {
+            outline: none;
+            border-color: #2b6cb0;
+        }
+        .login-card .error {
+            color: #e53e3e;
+            font-size: 14px;
+            margin-bottom: 15px;
+            min-height: 20px;
+        }
+        .login-card button {
+            width: 100%;
+            padding: 12px;
+            background: #2b6cb0;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .login-card button:hover {
+            background: #1e3a8a;
+        }
+        .admin-content {
+            display: none;
+        }
+        .admin-content.authenticated {
+            display: block;
+        }
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2b6cb0;
+        }
+        .admin-actions {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filters {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .order-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-left: 4px solid #2b6cb0;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .order-items {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .order-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .status-new { border-left-color: #2b6cb0; }
+        .status-processing { border-left-color: #ecc94b; }
+        .status-completed { border-left-color: #38a169; }
+        .status-cancelled { border-left-color: #e53e3e; }
+        .badge {
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge-new { background: #bee3f8; color: #2b6cb0; }
+        .badge-processing { background: #fefcbf; color: #d69e2e; }
+        .badge-completed { background: #c6f6d5; color: #276749; }
+        .badge-cancelled { background: #fed7d7; color: #c53030; }
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .form-row input {
+            flex: 1;
+        }
+        .product-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        @media (max-width: 768px) {
+            .filters, .admin-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .order-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .order-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Экран авторизации -->
+    <div class="login-screen" id="login-screen">
+        <div class="login-card">
+            <h2>🔐 Вход в админ-панель</h2>
+            <p class="subtitle">Введите пароль для доступа</p>
+            <input 
+                type="password" 
+                id="admin-password" 
+                placeholder="Пароль" 
+                maxlength="4"
+                autocomplete="off"
+                onkeypress="if(event.key==='Enter') checkPassword()"
+            />
+            <div class="error" id="login-error"></div>
+            <button onclick="checkPassword()">Войти</button>
+        </div>
+    </div>
+
+    <!-- Основной контент админ-панели -->
+    <div class="admin-content" id="admin-content">
+    <header>
+        <div class="brand">
+            <div class="logo">А</div>
+            <div>
+                <h1>Админ панель - Магазин цемента</h1>
+                <div class="muted">Управление заказами и статистика</div>
+            </div>
+        </div>
+        <div class="controls">
+            <button class="btn secondary" onclick="location.href='/'">На сайт</button>
+            <button class="btn secondary" onclick="showProductsSection()">Товары</button>
+            <button class="btn" onclick="exportOrders()">Экспорт</button>
+            <button class="btn" onclick="showAddOrderModal()">+ Добавить заказ</button>
+            <button class="btn secondary" onclick="logout()" style="background: #e53e3e; color: white; border: none;">🔓 Выйти</button>
+        </div>
+    </header>
+
+    <div class="admin-container">
+        <!-- Переключатель между заказами и товарами -->
+        <div style="margin-bottom: 20px;">
+            <button class="btn" id="orders-tab" onclick="showOrdersSection()">Заказы</button>
+            <button class="btn secondary" id="products-tab" onclick="showProductsSection()">Товары</button>
+            <button class="btn secondary" id="categories-tab" onclick="showCategoriesSection()">Категории</button>
+        </div>
+
+        <!-- Секция заказов -->
+        <div id="orders-section">
+        <!-- Статистика -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="total-orders">0</div>
+                <div class="muted">Всего заказов</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-revenue">0 ₸</div>
+                <div class="muted">Общая выручка</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="new-orders">0</div>
+                <div class="muted">Новые заказы</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avg-order">0 ₸</div>
+                <div class="muted">Средний чек</div>
+            </div>
+        </div>
+
+        <!-- Действия администратора -->
+        <div class="admin-actions">
+            <button class="btn secondary" onclick="loadOrders()">Обновить</button>
+            <button class="btn secondary" onclick="clearFilters()">Сбросить фильтры</button>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="filters">
+            <div class="search-box">
+                <input type="text" id="search-orders" placeholder="Поиск по имени, телефону..." style="width: 100%;">
+            </div>
+            <select id="status-filter" style="padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
+                <option value="">Все статусы</option>
+                <option value="new">Новые</option>
+                <option value="processing">В обработке</option>
+                <option value="completed">Завершенные</option>
+                <option value="cancelled">Отмененные</option>
+            </select>
+            <input type="date" id="date-from" style="padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
+            <input type="date" id="date-to" style="padding: 8px; border-radius: 6px; border: 1px solid #e5e7eb;">
+        </div>
+
+        <!-- Список заказов -->
+        <div id="orders-list">
+            <div class="loading">Загрузка заказов...</div>
+        </div>
+        </div>
+
+        <!-- Секция товаров -->
+        <div id="products-section" style="display: none;">
+            <div class="admin-actions">
+                <button class="btn" onclick="showAddProductModal()">+ Добавить товар</button>
+                <button class="btn" onclick="showImportModal()">📁 Импорт из Excel</button>
+                <button class="btn secondary" onclick="downloadTemplate()">📄 Скачать шаблон</button>
+                <button class="btn secondary" onclick="loadProducts()">Обновить</button>
+            </div>
+
+            <!-- Фильтр по категориям -->
+            <div style="background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <label style="font-weight: bold; margin-bottom: 8px; display: block;">Фильтр по категории:</label>
+                <select id="category-filter-admin" onchange="filterProductsByCategory()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <option value="">Все товары</option>
+                </select>
+            </div>
+
+            <div id="products-list">
+                <div class="loading">Загрузка товаров...</div>
+            </div>
+        </div>
+
+        <!-- Секция категорий -->
+        <div id="categories-section" style="display: none;">
+            <div class="admin-actions">
+                <button class="btn" onclick="showAddCategoryModal()">+ Добавить категорию</button>
+                <button class="btn secondary" onclick="loadCategories()">Обновить</button>
+            </div>
+
+            <div id="categories-list-admin">
+                <div class="loading">Загрузка категорий...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для добавления/редактирования товара -->
+    <div id="product-modal" class="modal" style="display: none;">
+        <div class="modal-card" style="max-width: 500px;">
+            <h3 id="product-modal-title">Добавить товар</h3>
+            
+            <div class="form-group">
+                <label>Название товара *</label>
+                <input type="text" id="product-name" placeholder="Например: Цемент Шымкент 450" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label>Категория</label>
+                <select id="product-category" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <option value="">Без категории</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Цена (₸) *</label>
+                <input type="number" id="product-price" placeholder="2000" min="0" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label>URL изображения</label>
+                <input type="text" id="product-image" placeholder="/assets/cement.jpg" style="width: 100%; margin-bottom: 10px;">
+                <div style="margin-top: 10px;">
+                    <label style="display: inline-block; cursor: pointer; background: #f3f4f6; padding: 8px 12px; border-radius: 6px; border: 1px solid #e5e7eb;">
+                        📁 Или загрузить изображение
+                        <input type="file" id="product-image-file" accept="image/*" style="display: none;" onchange="uploadProductImage(this)">
+                    </label>
+                    <div id="upload-status" style="margin-top: 5px; font-size: 13px; color: #6b7280;"></div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>В наличии</label>
+                <select id="product-stock" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <option value="1">Да</option>
+                    <option value="0">Нет</option>
+                </select>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="closeProductModal()">Отмена</button>
+                <button class="btn" onclick="saveProduct()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для добавления/редактирования категории -->
+    <div id="category-modal" class="modal" style="display: none;">
+        <div class="modal-card" style="max-width: 450px;">
+            <h3 id="category-modal-title">Добавить категорию</h3>
+            
+            <div class="form-group">
+                <label>Название категории *</label>
+                <input type="text" id="category-name" placeholder="Например: ЦЕМЕНТ" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label>Иконка (эмодзи)</label>
+                <input type="text" id="category-icon" placeholder="📦" maxlength="2" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label>Порядок отображения</label>
+                <input type="number" id="category-order" placeholder="0" min="0" style="width: 100%;">
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="closeCategoryModal()">Отмена</button>
+                <button class="btn" onclick="saveCategory()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для импорта товаров -->
+    <div id="import-modal" class="modal" style="display: none;">
+        <div class="modal-card" style="max-width: 550px;">
+            <h3>📁 Импорт товаров из Excel</h3>
+            <p class="muted" style="margin-bottom: 15px;">
+                Загрузите Excel файл (.xlsx) с товарами. 
+                <a href="#" onclick="downloadTemplate(); return false;" style="color: var(--accent);">Скачайте шаблон</a> для примера.
+            </p>
+            
+            <div class="form-group">
+                <label>Формат файла:</label>
+                <ul style="margin: 5px 0; padding-left: 20px; font-size: 13px; color: #6b7280;">
+                    <li><strong>Название</strong> - название товара (обязательно)</li>
+                    <li><strong>Цена</strong> - цена в тенге (обязательно)</li>
+                    <li><strong>Категория</strong> - название категории</li>
+                    <li><strong>Изображение</strong> - URL изображения</li>
+                    <li><strong>В_наличии</strong> - да/нет</li>
+                </ul>
+            </div>
+            
+            <div class="form-group">
+                <label style="display: block; cursor: pointer; background: #f3f4f6; padding: 20px; border-radius: 8px; border: 2px dashed #e5e7eb; text-align: center;">
+                    📂 Выберите Excel файл
+                    <input type="file" id="import-file" accept=".xlsx,.xls" style="display: none;" onchange="handleImportFile(this)">
+                </label>
+                <div id="import-file-name" style="margin-top: 10px; font-size: 13px; color: #6b7280;"></div>
+            </div>
+            
+            <div id="import-progress" style="display: none; margin: 15px 0;">
+                <div style="background: #f3f4f6; height: 8px; border-radius: 4px; overflow: hidden;">
+                    <div id="import-progress-bar" style="background: var(--accent); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                </div>
+                <div id="import-status" style="margin-top: 8px; font-size: 13px; color: #6b7280;"></div>
+            </div>
+            
+            <div id="import-result" style="display: none; margin: 15px 0; padding: 12px; border-radius: 8px;"></div>
+            
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="closeImportModal()">Закрыть</button>
+                <button class="btn" id="import-btn" onclick="importProducts()" disabled>Импортировать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для изменения статуса -->
+    <div id="status-modal" class="modal" style="display: none;">
+        <div class="modal-card">
+            <h3>Изменение статуса заказа</h3>
+            <p>Заказ #<span id="modal-order-id"></span></p>
+            <select id="new-status" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 6px; border: 1px solid #e5e7eb;">
+                <option value="new">Новый</option>
+                <option value="processing">В обработке</option>
+                <option value="completed">Завершен</option>
+                <option value="cancelled">Отменен</option>
+            </select>
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="closeStatusModal()">Отмена</button>
+                <button class="btn" onclick="updateOrderStatus()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для добавления заказа -->
+    <div id="add-order-modal" class="modal" style="display: none;">
+        <div class="modal-card" style="max-width: 600px;">
+            <h3>Добавить новый заказ</h3>
+            
+            <div class="form-group">
+                <label>Клиент</label>
+                <input type="text" id="new-order-name" placeholder="ФИО клиента" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label>Телефон</label>
+                <input type="text" id="new-order-phone" placeholder="Номер телефона" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label>Адрес доставки</label>
+                <input type="text" id="new-order-address" placeholder="Адрес доставки" style="width: 100%;">
+            </div>
+            
+            <div class="form-group">
+                <label>Товары</label>
+                <div id="new-order-items">
+                    <div class="product-item">
+                        <div class="form-row">
+                            <select class="product-select" style="flex: 2;">
+                                <option value="1">Цемент Шымкент 450 - 2,050 ₸</option>
+                                <option value="2">Цемент Шымкент 500 - 2,100 ₸</option>
+                                <option value="3">Цемент Стандарт 450 - 2,000 ₸</option>
+                                <option value="4">Цемент Аккерман - 2,200 ₸</option>
+                            </select>
+                            <input type="number" class="product-qty" placeholder="Кол-во" min="1" value="1" style="flex: 1;">
+                            <button class="btn secondary" onclick="removeProductItem(this)">×</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn secondary" onclick="addProductItem()" style="margin-top: 10px;">+ Добавить товар</button>
+            </div>
+            
+            <div class="form-group">
+                <label>Итого: <span id="new-order-total">0</span> ₸</label>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="closeAddOrderModal()">Отмена</button>
+                <button class="btn" onclick="createOrder()">Создать заказ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allOrders = [];
+        let currentEditingOrderId = null;
+
+        // Загрузка заказов
+        async function loadOrders() {
+            try {
+                document.getElementById('orders-list').innerHTML = '<div class="loading">Загрузка заказов...</div>';
+                
+                const response = await fetch('/api/orders');
+                allOrders = await response.json();
+                
+                applyFilters();
+                updateStats();
+                
+            } catch (error) {
+                console.error('Ошибка загрузки заказов:', error);
+                document.getElementById('orders-list').innerHTML = '<div class="empty-state">Ошибка загрузки заказов</div>';
+            }
+        }
+
+        // Применение фильтров
+        function applyFilters() {
+            const searchTerm = document.getElementById('search-orders').value.toLowerCase();
+            const statusFilter = document.getElementById('status-filter').value;
+            const dateFrom = document.getElementById('date-from').value;
+            const dateTo = document.getElementById('date-to').value;
+
+            let filteredOrders = allOrders;
+
+            // Поиск
+            if (searchTerm) {
+                filteredOrders = filteredOrders.filter(order => 
+                    order.name.toLowerCase().includes(searchTerm) ||
+                    order.phone.includes(searchTerm) ||
+                    order.address?.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // Фильтр по статусу
+            if (statusFilter) {
+                filteredOrders = filteredOrders.filter(order => order.status === statusFilter);
+            }
+
+            // Фильтр по дате
+            if (dateFrom) {
+                filteredOrders = filteredOrders.filter(order => new Date(order.created_at) >= new Date(dateFrom));
+            }
+            if (dateTo) {
+                const toDate = new Date(dateTo);
+                toDate.setDate(toDate.getDate() + 1);
+                filteredOrders = filteredOrders.filter(order => new Date(order.created_at) < toDate);
+            }
+
+            renderOrders(filteredOrders);
+        }
+
+        // Отрисовка заказов
+        function renderOrders(orders) {
+            const container = document.getElementById('orders-list');
+            
+            if (orders.length === 0) {
+                container.innerHTML = '<div class="empty-state">Заказы не найдены</div>';
+                return;
+            }
+
+            container.innerHTML = orders.map(order => `
+                <div class="order-card status-${order.status || 'new'}">
+                    <div class="order-header">
+                        <div>
+                            <strong>Заказ #${order.id}</strong>
+                            <span class="badge badge-${order.status || 'new'}">
+                                ${getStatusText(order.status)}
+                            </span>
+                        </div>
+                        <div class="muted">
+                            ${new Date(order.created_at).toLocaleString('ru-RU')}
+                        </div>
+                    </div>
+                    
+                    <div><strong>👤 ${order.name}</strong></div>
+                    <div class="muted">📞 ${order.phone}</div>
+                    ${order.address ? `<div class="muted">🏠 ${order.address}</div>` : ''}
+                    
+                    <div class="order-items">
+                        <strong>Товары:</strong>
+                        ${Object.entries(order.items).map(([id, qty]) => `
+                            <div class="order-item">
+                                <span>${getProductName(parseInt(id))}</span>
+                                <span>${qty} шт × ${getProductPrice(parseInt(id))} ₸ = <strong>${(getProductPrice(parseInt(id)) * qty).toLocaleString('ru-RU')} ₸</strong></span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div style="text-align: right; font-size: 1.2em; font-weight: bold; margin-top: 10px;">
+                        Итого: ${parseInt(order.total).toLocaleString('ru-RU')} ₸
+                    </div>
+                    
+                    <div class="order-actions">
+                        <button class="btn secondary" onclick="changeStatus(${order.id})">
+                            Сменить статус
+                        </button>
+                        <button class="btn" onclick="callCustomer('${order.phone}')">
+                            Позвонить
+                        </button>
+                        <button class="btn secondary" onclick="deleteOrder(${order.id})">
+                            Удалить
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Обновление статистики
+        function updateStats() {
+            const totalOrders = allOrders.length;
+            const totalRevenue = allOrders.reduce((sum, order) => sum + parseInt(order.total), 0);
+            const newOrders = allOrders.filter(order => !order.status || order.status === 'new').length;
+            const avgOrder = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+
+            document.getElementById('total-orders').textContent = totalOrders;
+            document.getElementById('total-revenue').textContent = totalRevenue.toLocaleString('ru-RU') + ' ₸';
+            document.getElementById('new-orders').textContent = newOrders;
+            document.getElementById('avg-order').textContent = avgOrder.toLocaleString('ru-RU') + ' ₸';
+        }
+
+        // Вспомогательные функции
+        function getStatusText(status) {
+            const statuses = {
+                'new': 'Новый',
+                'processing': 'В обработке',
+                'completed': 'Завершен',
+                'cancelled': 'Отменен'
+            };
+            return statuses[status] || 'Новый';
+        }
+
+        function getProductName(id) {
+            const products = {
+                1: 'Цемент Шымкент 450',
+                2: 'Цемент Шымкент 500', 
+                3: 'Цемент Стандарт 450',
+                4: 'Цемент Аккерман'
+            };
+            return products[id] || `Товар #${id}`;
+        }
+
+        function getProductPrice(id) {
+            const prices = {1: 2050, 2: 2100, 3: 2000, 4: 2200};
+            return prices[id] || 0;
+        }
+
+        // Действия с заказами
+        function changeStatus(orderId) {
+            currentEditingOrderId = orderId;
+            document.getElementById('modal-order-id').textContent = orderId;
+            
+            // Устанавливаем текущий статус
+            const order = allOrders.find(o => o.id === orderId);
+            if (order) {
+                document.getElementById('new-status').value = order.status || 'new';
+            }
+            
+            document.getElementById('status-modal').style.display = 'grid';
+        }
+
+        function closeStatusModal() {
+            document.getElementById('status-modal').style.display = 'none';
+            currentEditingOrderId = null;
+        }
+
+        async function updateOrderStatus() {
+            const newStatus = document.getElementById('new-status').value;
+            
+            try {
+                const response = await fetch(`/api/orders/${currentEditingOrderId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.ok) {
+                    // Обновляем локально
+                    const order = allOrders.find(o => o.id === currentEditingOrderId);
+                    if (order) {
+                        order.status = newStatus;
+                        applyFilters();
+                        updateStats();
+                    }
+                    closeStatusModal();
+                    alert(`Статус заказа #${currentEditingOrderId} изменен на "${getStatusText(newStatus)}"`);
+                } else {
+                    alert('Ошибка при обновлении статуса');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при обновлении статуса');
+            }
+        }
+
+        async function deleteOrder(orderId) {
+            if (!confirm(`Удалить заказ #${orderId}?`)) return;
+            
+            try {
+                const response = await fetch(`/api/orders/${orderId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    // Удаляем локально
+                    allOrders = allOrders.filter(order => order.id !== orderId);
+                    applyFilters();
+                    updateStats();
+                    alert(`Заказ #${orderId} удален`);
+                } else {
+                    alert('Ошибка при удалении заказа');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при удалении заказа');
+            }
+        }
+
+        function callCustomer(phone) {
+            window.open(`tel:${phone}`, '_self');
+        }
+
+        function clearFilters() {
+            document.getElementById('search-orders').value = '';
+            document.getElementById('status-filter').value = '';
+            document.getElementById('date-from').value = '';
+            document.getElementById('date-to').value = '';
+            applyFilters();
+        }
+
+        // Функции для добавления заказа
+        function showAddOrderModal() {
+            document.getElementById('add-order-modal').style.display = 'grid';
+            calculateNewOrderTotal();
+        }
+
+        function closeAddOrderModal() {
+            document.getElementById('add-order-modal').style.display = 'none';
+        }
+
+        function addProductItem() {
+            const container = document.getElementById('new-order-items');
+            const newItem = document.createElement('div');
+            newItem.className = 'product-item';
+            newItem.innerHTML = `
+                <div class="form-row">
+                    <select class="product-select" style="flex: 2;" onchange="calculateNewOrderTotal()">
+                        <option value="1">Цемент Шымкент 450 - 2,050 ₸</option>
+                        <option value="2">Цемент Шымкент 500 - 2,100 ₸</option>
+                        <option value="3">Цемент Стандарт 450 - 2,000 ₸</option>
+                        <option value="4">Цемент быстротвердеющий - 12,500 ₸</option>
+                    </select>
+                    <input type="number" class="product-qty" placeholder="Кол-во" min="1" value="1" 
+                           style="flex: 1;" onchange="calculateNewOrderTotal()">
+                    <button class="btn secondary" onclick="removeProductItem(this)">×</button>
+                </div>
+            `;
+            container.appendChild(newItem);
+            calculateNewOrderTotal();
+        }
+
+        function removeProductItem(button) {
+            if (document.querySelectorAll('.product-item').length > 1) {
+                button.closest('.product-item').remove();
+                calculateNewOrderTotal();
+            }
+        }
+
+        function calculateNewOrderTotal() {
+            let total = 0;
+            document.querySelectorAll('.product-item').forEach(item => {
+                const productId = item.querySelector('.product-select').value;
+                const qty = parseInt(item.querySelector('.product-qty').value) || 0;
+                total += getProductPrice(parseInt(productId)) * qty;
+            });
+            document.getElementById('new-order-total').textContent = total.toLocaleString('ru-RU');
+        }
+
+        async function createOrder() {
+            const name = document.getElementById('new-order-name').value.trim();
+            const phone = document.getElementById('new-order-phone').value.trim();
+            const address = document.getElementById('new-order-address').value.trim();
+
+            if (!name || !phone) {
+                alert('Введите имя и телефон клиента');
+                return;
+            }
+
+            // Собираем товары
+            const items = {};
+            document.querySelectorAll('.product-item').forEach(item => {
+                const productId = item.querySelector('.product-select').value;
+                const qty = parseInt(item.querySelector('.product-qty').value) || 0;
+                if (qty > 0) {
+                    items[productId] = qty;
+                }
+            });
+
+            if (Object.keys(items).length === 0) {
+                alert('Добавьте хотя бы один товар');
+                return;
+            }
+
+            const total = parseInt(document.getElementById('new-order-total').textContent.replace(/\s/g, '')) || 0;
+
+            try {
+                const response = await fetch('/api/admin/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name,
+                        phone,
+                        address,
+                        items,
+                        total
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Заказ успешно создан!');
+                    closeAddOrderModal();
+                    loadOrders(); // Перезагружаем список заказов
+                    
+                    // Очищаем форму
+                    document.getElementById('new-order-name').value = '';
+                    document.getElementById('new-order-phone').value = '';
+                    document.getElementById('new-order-address').value = '';
+                } else {
+                    alert('Ошибка при создании заказа');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при создании заказа');
+            }
+        }
+
+        function exportOrders() {
+            const csv = convertToCSV(allOrders);
+            downloadCSV(csv, 'orders.csv');
+        }
+
+        function convertToCSV(orders) {
+            const headers = ['ID', 'Имя', 'Телефон', 'Адрес', 'Товары', 'Сумма', 'Дата', 'Статус'];
+            const rows = orders.map(order => [
+                order.id,
+                `"${order.name}"`,
+                order.phone,
+                `"${order.address || ''}"`,
+                `"${Object.entries(order.items).map(([id, qty]) => `${getProductName(parseInt(id))} (${qty}шт)`).join(', ')}"`,
+                order.total,
+                new Date(order.created_at).toLocaleString('ru-RU'),
+                getStatusText(order.status)
+            ]);
+            
+            return [headers, ...rows].map(row => row.join(',')).join('\n');
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // ============= УПРАВЛЕНИЕ ТОВАРАМИ =============
+        let allProducts = [];
+        let currentEditingProductId = null;
+
+        // Показать секцию товаров
+        function showProductsSection() {
+            document.getElementById('orders-section').style.display = 'none';
+            document.getElementById('products-section').style.display = 'block';
+            document.getElementById('categories-section').style.display = 'none';
+            document.getElementById('orders-tab').className = 'btn secondary';
+            document.getElementById('products-tab').className = 'btn';
+            document.getElementById('categories-tab').className = 'btn secondary';
+            loadProducts();
+            loadCategoriesFilter(); // Загружаем категории для фильтра
+        }
+
+        // Показать секцию заказов
+        function showOrdersSection() {
+            document.getElementById('orders-section').style.display = 'block';
+            document.getElementById('products-section').style.display = 'none';
+            document.getElementById('categories-section').style.display = 'none';
+            document.getElementById('orders-tab').className = 'btn';
+            document.getElementById('products-tab').className = 'btn secondary';
+            document.getElementById('categories-tab').className = 'btn secondary';
+        }
+
+        // Загрузить категории в фильтр
+        async function loadCategoriesFilter() {
+            try {
+                const response = await fetch('/api/categories');
+                const categories = await response.json();
+                
+                const select = document.getElementById('category-filter-admin');
+                select.innerHTML = '<option value="">Все товары</option>';
+                
+                categories.forEach(category => {
+                    select.innerHTML += `<option value="${category.id}">${category.icon} ${category.name}</option>`;
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки категорий:', error);
+            }
+        }
+
+        // Фильтр товаров по категории
+        function filterProductsByCategory() {
+            const selectedCategoryId = document.getElementById('category-filter-admin').value;
+            renderProducts(selectedCategoryId);
+        }
+
+        // Загрузить товары
+        async function loadProducts() {
+            try {
+                document.getElementById('products-list').innerHTML = '<div class="loading">Загрузка товаров...</div>';
+                
+                const response = await fetch('/api/products');
+                allProducts = await response.json();
+                
+                renderProducts();
+            } catch (error) {
+                console.error('Ошибка загрузки товаров:', error);
+                document.getElementById('products-list').innerHTML = '<div class="empty-state">Ошибка загрузки товаров</div>';
+            }
+        }
+
+        // Отобразить товары
+        function renderProducts(categoryFilter = '') {
+            const container = document.getElementById('products-list');
+            
+            // Фильтруем товары по категории
+            let filteredProducts = allProducts;
+            if (categoryFilter) {
+                filteredProducts = allProducts.filter(p => p.category_id == categoryFilter);
+            }
+            
+            if (filteredProducts.length === 0) {
+                container.innerHTML = '<div class="empty-state">Нет товаров в этой категории</div>';
+                return;
+            }
+
+            container.innerHTML = filteredProducts.map(product => `
+                <div class="order-card" style="border-left-color: ${product.stock ? '#38a169' : '#e53e3e'};">
+                    <div class="order-header">
+                        <div>
+                            <h4 style="margin: 0 0 5px 0;">${product.name}</h4>
+                            <div class="muted">ID: ${product.id} | Цена: ${product.price.toLocaleString('ru-RU')} ₸</div>
+                            ${product.image ? `<div class="muted">Изображение: ${product.image}</div>` : ''}
+                        </div>
+                        <div>
+                            <span class="badge ${product.stock ? 'badge-completed' : 'badge-cancelled'}">
+                                ${product.stock ? 'В наличии' : 'Нет в наличии'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="order-actions">
+                        <button class="btn secondary" onclick="editProduct(${product.id})">Редактировать</button>
+                        <button class="btn secondary" onclick="deleteProduct(${product.id}, '${product.name}')">Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Показать модальное окно добавления товара
+        function showAddProductModal() {
+            loadCategoriesForSelect(); // Загружаем категории в селект
+            currentEditingProductId = null;
+            document.getElementById('product-modal-title').textContent = 'Добавить товар';
+            document.getElementById('product-name').value = '';
+            document.getElementById('product-category').value = '';
+            document.getElementById('product-price').value = '';
+            document.getElementById('product-image').value = '';
+            document.getElementById('product-stock').value = '1';
+            document.getElementById('product-modal').style.display = 'grid';
+        }
+
+        // Редактировать товар
+        function editProduct(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product) return;
+
+            loadCategoriesForSelect(); // Загружаем категории в селект
+            currentEditingProductId = id;
+            document.getElementById('product-modal-title').textContent = 'Редактировать товар';
+            document.getElementById('product-name').value = product.name;
+            document.getElementById('product-category').value = product.category_id || '';
+            document.getElementById('product-price').value = product.price;
+            document.getElementById('product-image').value = product.image || '';
+            document.getElementById('product-stock').value = product.stock ? '1' : '0';
+            document.getElementById('product-modal').style.display = 'grid';
+        }
+
+        // Сохранить товар (создать или обновить)
+        async function saveProduct() {
+            const name = document.getElementById('product-name').value.trim();
+            const category_id = document.getElementById('product-category').value || null;
+            const price = parseInt(document.getElementById('product-price').value);
+            const image = document.getElementById('product-image').value.trim();
+            const stock = parseInt(document.getElementById('product-stock').value);
+
+            if (!name || !price || price <= 0) {
+                alert('Заполните название и цену товара');
+                return;
+            }
+
+            const productData = { name, price, image, stock, category_id };
+
+            try {
+                let response;
+                if (currentEditingProductId) {
+                    // Обновление
+                    response = await fetch(`/api/products/${currentEditingProductId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(productData)
+                    });
+                } else {
+                    // Создание
+                    response = await fetch('/api/products', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(productData)
+                    });
+                }
+
+                if (response.ok) {
+                    alert(currentEditingProductId ? 'Товар обновлен!' : 'Товар добавлен!');
+                    closeProductModal();
+                    loadProducts();
+                } else {
+                    alert('Ошибка при сохранении товара');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при сохранении товара');
+            }
+        }
+
+        // Удалить товар
+        async function deleteProduct(id, name) {
+            if (!confirm(`Вы уверены, что хотите удалить товар "${name}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/products/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Товар удален!');
+                    loadProducts();
+                } else {
+                    alert('Ошибка при удалении товара');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при удалении товара');
+            }
+        }
+
+        // Закрыть модальное окно товара
+        function closeProductModal() {
+            document.getElementById('product-modal').style.display = 'none';
+            currentEditingProductId = null;
+        }
+
+        // ============= УПРАВЛЕНИЕ КАТЕГОРИЯМИ =============
+        let allCategoriesAdmin = [];
+        let currentEditingCategoryId = null;
+
+        // Показать секцию категорий
+        function showCategoriesSection() {
+            document.getElementById('orders-section').style.display = 'none';
+            document.getElementById('products-section').style.display = 'none';
+            document.getElementById('categories-section').style.display = 'block';
+            document.getElementById('orders-tab').className = 'btn secondary';
+            document.getElementById('products-tab').className = 'btn secondary';
+            document.getElementById('categories-tab').className = 'btn';
+            loadCategories();
+        }
+
+        // Загрузить категории для админки
+        async function loadCategories() {
+            try {
+                document.getElementById('categories-list-admin').innerHTML = '<div class="loading">Загрузка категорий...</div>';
+                
+                const response = await fetch('/api/categories');
+                allCategoriesAdmin = await response.json();
+                
+                renderCategoriesAdmin();
+            } catch (error) {
+                console.error('Ошибка загрузки категорий:', error);
+                document.getElementById('categories-list-admin').innerHTML = '<div class="empty-state">Ошибка загрузки категорий</div>';
+            }
+        }
+
+        // Загрузить категории в селект (для формы товара)
+        async function loadCategoriesForSelect() {
+            try {
+                const response = await fetch('/api/categories');
+                const categories = await response.json();
+                
+                const select = document.getElementById('product-category');
+                select.innerHTML = '<option value="">Без категории</option>';
+                
+                categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = `${cat.icon || '📦'} ${cat.name}`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки категорий:', error);
+            }
+        }
+
+        // Отобразить категории в админке
+        function renderCategoriesAdmin() {
+            const container = document.getElementById('categories-list-admin');
+            
+            if (allCategoriesAdmin.length === 0) {
+                container.innerHTML = '<div class="empty-state">Нет категорий. Добавьте первую категорию!</div>';
+                return;
+            }
+
+            container.innerHTML = allCategoriesAdmin.map(category => `
+                <div class="order-card" style="border-left-color: #2b6cb0;">
+                    <div class="order-header">
+                        <div>
+                            <h4 style="margin: 0 0 5px 0;">${category.icon || '📦'} ${category.name}</h4>
+                            <div class="muted">ID: ${category.id} | Порядок: ${category.order_index}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="order-actions">
+                        <button class="btn secondary" onclick="editCategory(${category.id})">Редактировать</button>
+                        <button class="btn secondary" onclick="deleteCategory(${category.id}, '${category.name}')">Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Показать модальное окно добавления категории
+        function showAddCategoryModal() {
+            currentEditingCategoryId = null;
+            document.getElementById('category-modal-title').textContent = 'Добавить категорию';
+            document.getElementById('category-name').value = '';
+            document.getElementById('category-icon').value = '📦';
+            document.getElementById('category-order').value = '0';
+            document.getElementById('category-modal').style.display = 'grid';
+        }
+
+        // Редактировать категорию
+        function editCategory(id) {
+            const category = allCategoriesAdmin.find(c => c.id === id);
+            if (!category) return;
+
+            currentEditingCategoryId = id;
+            document.getElementById('category-modal-title').textContent = 'Редактировать категорию';
+            document.getElementById('category-name').value = category.name;
+            document.getElementById('category-icon').value = category.icon || '📦';
+            document.getElementById('category-order').value = category.order_index || 0;
+            document.getElementById('category-modal').style.display = 'grid';
+        }
+
+        // Сохранить категорию (создать или обновить)
+        async function saveCategory() {
+            const name = document.getElementById('category-name').value.trim();
+            const icon = document.getElementById('category-icon').value.trim();
+            const order_index = parseInt(document.getElementById('category-order').value) || 0;
+
+            if (!name) {
+                alert('Введите название категории');
+                return;
+            }
+
+            const categoryData = { name, icon: icon || '📦', order_index, parent_id: null };
+
+            try {
+                let response;
+                if (currentEditingCategoryId) {
+                    // Обновление
+                    response = await fetch(`/api/categories/${currentEditingCategoryId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(categoryData)
+                    });
+                } else {
+                    // Создание
+                    response = await fetch('/api/categories', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(categoryData)
+                    });
+                }
+
+                if (response.ok) {
+                    alert(currentEditingCategoryId ? 'Категория обновлена!' : 'Категория добавлена!');
+                    closeCategoryModal();
+                    loadCategories();
+                } else {
+                    alert('Ошибка при сохранении категории');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при сохранении категории');
+            }
+        }
+
+        // Удалить категорию
+        async function deleteCategory(id, name) {
+            if (!confirm(`Вы уверены, что хотите удалить категорию "${name}"?\n\nТовары из этой категории останутся, но будут без категории.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/categories/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alert('Категория удалена!');
+                    loadCategories();
+                } else {
+                    alert('Ошибка при удалении категории');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при удалении категории');
+            }
+        }
+
+        // Закрыть модальное окно категории
+        function closeCategoryModal() {
+            document.getElementById('category-modal').style.display = 'none';
+            currentEditingCategoryId = null;
+        }
+
+        // ============= ИМПОРТ ТОВАРОВ =============
+        let selectedImportFile = null;
+
+        // Показать модальное окно импорта
+        function showImportModal() {
+            document.getElementById('import-modal').style.display = 'grid';
+            document.getElementById('import-file-name').textContent = '';
+            document.getElementById('import-progress').style.display = 'none';
+            document.getElementById('import-result').style.display = 'none';
+            document.getElementById('import-btn').disabled = true;
+            selectedImportFile = null;
+        }
+
+        // Закрыть модальное окно импорта
+        function closeImportModal() {
+            document.getElementById('import-modal').style.display = 'none';
+            selectedImportFile = null;
+        }
+
+        // Обработка выбора файла
+        function handleImportFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+                alert('Пожалуйста, выберите Excel файл (.xlsx или .xls)');
+                input.value = '';
+                return;
+            }
+
+            selectedImportFile = file;
+            document.getElementById('import-file-name').textContent = `Выбран файл: ${file.name}`;
+            document.getElementById('import-btn').disabled = false;
+        }
+
+        // Импорт товаров
+        async function importProducts() {
+            if (!selectedImportFile) {
+                alert('Выберите файл для импорта');
+                return;
+            }
+
+            const progressDiv = document.getElementById('import-progress');
+            const progressBar = document.getElementById('import-progress-bar');
+            const statusDiv = document.getElementById('import-status');
+            const resultDiv = document.getElementById('import-result');
+            const importBtn = document.getElementById('import-btn');
+
+            progressDiv.style.display = 'block';
+            resultDiv.style.display = 'none';
+            importBtn.disabled = true;
+            progressBar.style.width = '30%';
+            statusDiv.textContent = 'Загрузка файла...';
+
+            const formData = new FormData();
+            formData.append('file', selectedImportFile);
+
+            try {
+                progressBar.style.width = '60%';
+                statusDiv.textContent = 'Обработка данных...';
+
+                const response = await fetch('/api/products/import', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                progressBar.style.width = '100%';
+                statusDiv.textContent = 'Завершено!';
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.background = '#d4edda';
+                    resultDiv.style.color = '#155724';
+                    
+                    let message = `✓ Успешно импортировано: ${result.imported} из ${result.total} товаров`;
+                    
+                    if (result.errors && result.errors.length > 0) {
+                        message += `\n\nОшибки:\n${result.errors.join('\n')}`;
+                    }
+                    
+                    resultDiv.innerHTML = message.replace(/\n/g, '<br>');
+                    
+                    // Обновляем список товаров
+                    setTimeout(() => {
+                        loadProducts();
+                    }, 1500);
+                } else {
+                    throw new Error(result.error || 'Ошибка импорта');
+                }
+
+            } catch (error) {
+                console.error('Ошибка импорта:', error);
+                
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = '#f8d7da';
+                resultDiv.style.color = '#721c24';
+                resultDiv.textContent = `✗ Ошибка: ${error.message}`;
+                
+                progressBar.style.width = '0%';
+                statusDiv.textContent = '';
+            } finally {
+                importBtn.disabled = false;
+            }
+        }
+
+        // Скачать шаблон Excel
+        function downloadTemplate() {
+            window.open('/api/products/export-template', '_blank');
+        }
+
+        // Загрузка изображения товара
+        async function uploadProductImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const statusDiv = document.getElementById('upload-status');
+            statusDiv.textContent = 'Загрузка...';
+            statusDiv.style.color = '#2b6cb0';
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.path) {
+                    document.getElementById('product-image').value = result.path;
+                    statusDiv.textContent = '✓ Изображение загружено';
+                    statusDiv.style.color = '#38a169';
+                } else {
+                    statusDiv.textContent = '✗ Ошибка загрузки';
+                    statusDiv.style.color = '#e53e3e';
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                statusDiv.textContent = '✗ Ошибка загрузки';
+                statusDiv.style.color = '#e53e3e';
+            }
+        }
+
+        // ============= АВТОРИЗАЦИЯ =============
+        const ADMIN_PASSWORD = '8888';
+        const AUTH_KEY = 'adminAuthenticated';
+        const AUTH_EXPIRY = 'adminAuthExpiry';
+
+        // Проверка авторизации при загрузке
+        function checkAuth() {
+            const isAuth = localStorage.getItem(AUTH_KEY);
+            const expiry = localStorage.getItem(AUTH_EXPIRY);
+            const now = new Date().getTime();
+
+            if (isAuth === 'true' && expiry && now < parseInt(expiry)) {
+                // Авторизован и сессия не истекла
+                showAdminPanel();
+                return true;
+            } else {
+                // Не авторизован или сессия истекла
+                localStorage.removeItem(AUTH_KEY);
+                localStorage.removeItem(AUTH_EXPIRY);
+                showLoginScreen();
+                return false;
+            }
+        }
+
+        function checkPassword() {
+            const password = document.getElementById('admin-password').value;
+            const errorDiv = document.getElementById('login-error');
+
+            if (password === ADMIN_PASSWORD) {
+                // Успешная авторизация
+                const expiry = new Date().getTime() + (24 * 60 * 60 * 1000); // 24 часа
+                localStorage.setItem(AUTH_KEY, 'true');
+                localStorage.setItem(AUTH_EXPIRY, expiry.toString());
+                
+                errorDiv.textContent = '✓ Вход выполнен!';
+                errorDiv.style.color = '#38a169';
+                
+                setTimeout(() => {
+                    showAdminPanel();
+                }, 500);
+            } else {
+                // Неверный пароль
+                errorDiv.textContent = '✗ Неверный пароль';
+                errorDiv.style.color = '#e53e3e';
+                document.getElementById('admin-password').value = '';
+                document.getElementById('admin-password').focus();
+                
+                // Анимация тряски
+                const card = document.querySelector('.login-card');
+                card.style.animation = 'shake 0.5s';
+                setTimeout(() => {
+                    card.style.animation = '';
+                }, 500);
+            }
+        }
+
+        function showLoginScreen() {
+            document.getElementById('login-screen').style.display = 'grid';
+            document.getElementById('admin-content').classList.remove('authenticated');
+            document.getElementById('admin-password').focus();
+        }
+
+        function showAdminPanel() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('admin-content').classList.add('authenticated');
+        }
+
+        function logout() {
+            localStorage.removeItem(AUTH_KEY);
+            localStorage.removeItem(AUTH_EXPIRY);
+            showLoginScreen();
+        }
+
+        // Добавляем CSS для анимации тряски
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+                20%, 40%, 60%, 80% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            // Проверяем авторизацию
+            if (checkAuth()) {
+                loadOrders();
+            }
+            
+            // Автообновление каждые 30 секунд
+            setInterval(loadOrders, 30000);
+            
+            // Слушатели фильтров
+            document.getElementById('search-orders').addEventListener('input', applyFilters);
+            document.getElementById('status-filter').addEventListener('change', applyFilters);
+            document.getElementById('date-from').addEventListener('change', applyFilters);
+            document.getElementById('date-to').addEventListener('change', applyFilters);
+        });
+    </script>
+    </div>
+</body>
+</html>

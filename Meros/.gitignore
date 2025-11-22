@@ -1,0 +1,23 @@
+# Зависимости
+node_modules/
+package-lock.json
+
+# База данных
+*.sqlite
+*.db
+
+# Переменные окружения (содержит секреты)
+.env
+
+# Логи
+*.log
+npm-debug.log*
+
+# Временные файлы
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Загруженные файлы
+uploads/
+public/uploads/
