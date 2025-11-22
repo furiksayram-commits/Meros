@@ -2,10 +2,6 @@
 node_modules/
 package-lock.json
 
-# База данных
-*.sqlite
-*.db
-
 # Переменные окружения (содержит секреты)
 .env
 
