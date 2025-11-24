@@ -328,6 +328,12 @@
                 </select>
             </div>
 
+            <!-- Поиск товаров -->
+            <div style="background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <label style="font-weight: bold; margin-bottom: 8px; display: block;">🔍 Поиск товаров:</label>
+                <input type="search" id="search-products" oninput="searchProducts()" placeholder="Введите название товара..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e5e7eb; font-size: 14px;">
+            </div>
+
             <div id="products-list">
                 <div class="loading">Загрузка товаров...</div>
             </div>
@@ -913,6 +919,7 @@
         // ============= УПРАВЛЕНИЕ ТОВАРАМИ =============
         let allProducts = [];
         let currentEditingProductId = null;
+        let selectedCategoryId = '';
 
         // Показать секцию товаров
         function showProductsSection() {
@@ -955,8 +962,15 @@
 
         // Фильтр товаров по категории
         function filterProductsByCategory() {
-            const selectedCategoryId = document.getElementById('category-filter-admin').value;
-            renderProducts(selectedCategoryId);
+            selectedCategoryId = document.getElementById('category-filter-admin').value;
+            const searchQuery = document.getElementById('search-products').value.trim();
+            renderProducts(selectedCategoryId, searchQuery);
+        }
+
+        // Поиск товаров
+        function searchProducts() {
+            const searchQuery = document.getElementById('search-products').value.trim();
+            renderProducts(selectedCategoryId, searchQuery);
         }
 
         // Загрузить товары
@@ -975,17 +989,29 @@
         }
 
         // Отобразить товары
-        function renderProducts(categoryFilter = '') {
+        function renderProducts(categoryFilter = '', searchQuery = '') {
             const container = document.getElementById('products-list');
             
-            // Фильтруем товары по категории
+            // Фильтруем товары
             let filteredProducts = allProducts;
+            
+            // Фильтр по категории
             if (categoryFilter) {
-                filteredProducts = allProducts.filter(p => p.category_id == categoryFilter);
+                filteredProducts = filteredProducts.filter(p => p.category_id == categoryFilter);
+            }
+            
+            // Фильтр по поиску
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                filteredProducts = filteredProducts.filter(p => 
+                    p.name.toLowerCase().includes(query) ||
+                    p.id.toString().includes(query) ||
+                    p.price.toString().includes(query)
+                );
             }
             
             if (filteredProducts.length === 0) {
-                container.innerHTML = '<div class="empty-state">Нет товаров в этой категории</div>';
+                container.innerHTML = '<div class="empty-state">Товары не найдены</div>';
                 return;
             }
 
@@ -998,9 +1024,12 @@
                             ${product.image ? `<div class="muted">Изображение: ${product.image}</div>` : ''}
                         </div>
                         <div>
-                            <span class="badge ${product.stock ? 'badge-completed' : 'badge-cancelled'}">
-                                ${product.stock ? 'В наличии' : 'Нет в наличии'}
-                            </span>
+                            <button class="badge ${product.stock ? 'badge-completed' : 'badge-cancelled'}" 
+                                    onclick="toggleStock(${product.id}, ${product.stock})"
+                                    style="cursor: pointer; border: none; transition: all 0.2s; background: ${product.stock ? '#c6f6d5' : '#fed7d7'}; color: ${product.stock ? '#276749' : '#9b2c2c'};"
+                                    title="Нажмите для изменения наличия">
+                                ${product.stock ? '✓ В наличии' : '✗ Нет в наличии'}
+                            </button>
                         </div>
                     </div>
                     
@@ -1026,19 +1055,21 @@
         }
 
         // Редактировать товар
-        function editProduct(id) {
+        async function editProduct(id) {
             const product = allProducts.find(p => p.id === id);
             if (!product) return;
 
-            loadCategoriesForSelect(); // Загружаем категории в селект
             currentEditingProductId = id;
             document.getElementById('product-modal-title').textContent = 'Редактировать товар';
             document.getElementById('product-name').value = product.name;
-            document.getElementById('product-category').value = product.category_id || '';
             document.getElementById('product-price').value = product.price;
             document.getElementById('product-image').value = product.image || '';
             document.getElementById('product-stock').value = product.stock ? '1' : '0';
             document.getElementById('product-modal').style.display = 'grid';
+            
+            // Загружаем категории и устанавливаем выбранную категорию
+            await loadCategoriesForSelect();
+            document.getElementById('product-category').value = product.category_id || '';
         }
 
         // Сохранить товар (создать или обновить)
@@ -1107,6 +1138,42 @@
             } catch (error) {
                 console.error('Ошибка:', error);
                 alert('Ошибка при удалении товара');
+            }
+        }
+
+        // Переключить наличие товара
+        async function toggleStock(id, currentStock) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product) return;
+
+            const newStock = currentStock ? 0 : 1;
+
+            try {
+                const response = await fetch(`/api/products/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: product.name,
+                        price: product.price,
+                        image: product.image,
+                        stock: newStock,
+                        category_id: product.category_id
+                    })
+                });
+
+                if (response.ok) {
+                    // Обновляем локальные данные
+                    product.stock = newStock;
+                    // Перерисовываем список товаров
+                    renderProducts(selectedCategoryId);
+                } else {
+                    alert('Ошибка при изменении наличия');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при изменении наличия');
             }
         }
 

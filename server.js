@@ -6,14 +6,70 @@ const sqlite3 = require('sqlite3').verbose();
 const TelegramBot = require('node-telegram-bot-api');
 const multer = require('multer');
 const XLSX = require('xlsx');
+const crypto = require('crypto');
 require('dotenv').config();
 
 console.log('BOT_TOKEN =', process.env.BOT_TOKEN);
 console.log('ADMIN_CHAT_ID =', process.env.ADMIN_CHAT_ID);
 
 // --- TELEGRAM НАСТРОЙКИ ---
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: false });
+const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+
+// Обработчики бота
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  const username = msg.from.username || msg.from.first_name;
+  
+  bot.sendMessage(chatId, `👋 Привет, ${username}!\n\nЯ бот магазина "Мерос".\n\n📱 Используйте команду /phone чтобы поделиться номером телефона для автозаполнения при заказах на сайте.`);
+});
+
+bot.onText(/\/phone/, (msg) => {
+  const chatId = msg.chat.id;
+  
+  bot.sendMessage(chatId, '📱 Поделитесь вашим номером телефона для автозаполнения при заказах:', {
+    reply_markup: {
+      keyboard: [[{
+        text: '📱 Отправить номер телефона',
+        request_contact: true
+      }]],
+      resize_keyboard: true,
+      one_time_keyboard: true
+    }
+  });
+});
+
+bot.on('contact', (msg) => {
+  const chatId = msg.chat.id;
+  const telegramId = msg.from.id;
+  const contact = msg.contact;
+  
+  if (contact.user_id === telegramId) {
+    const phone = contact.phone_number;
+    
+    // Сохраняем номер в базу данных
+    db.run(`
+      UPDATE users 
+      SET phone = ? 
+      WHERE telegram_id = ?
+    `, [phone, telegramId], (err) => {
+      if (err) {
+        console.error('Error saving phone:', err);
+        bot.sendMessage(chatId, '❌ Ошибка сохранения номера. Попробуйте позже.', {
+          reply_markup: { remove_keyboard: true }
+        });
+      } else {
+        bot.sendMessage(chatId, `✅ Номер ${phone} успешно сохранен!\n\nТеперь при оформлении заказа на сайте он будет автоматически заполнен.`, {
+          reply_markup: { remove_keyboard: true }
+        });
+      }
+    });
+  } else {
+    bot.sendMessage(chatId, '❌ Пожалуйста, отправьте свой номер телефона.', {
+      reply_markup: { remove_keyboard: true }
+    });
+  }
+});
 
 // --- DATABASE ---
 const DB_PATH = path.join(__dirname, 'db.sqlite');
@@ -33,7 +89,9 @@ if(!dbExists){
       items TEXT,
       total INTEGER,
       status TEXT DEFAULT 'new',
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      user_id INTEGER,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     )`);
     
     db.run(`CREATE TABLE categories (
@@ -55,6 +113,18 @@ if(!dbExists){
       category_id INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+    )`);
+    
+    db.run(`CREATE TABLE users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      telegram_id INTEGER UNIQUE NOT NULL,
+      first_name TEXT,
+      last_name TEXT,
+      username TEXT,
+      photo_url TEXT,
+      phone TEXT,
+      address TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`);
     
     // Добавляем начальные категории
@@ -377,7 +447,7 @@ app.post('/api/products', (req, res) => {
   if(!name || !price) return res.status(400).send('name and price are required');
 
   const stmt = db.prepare(`INSERT INTO products (name, price, image, stock, category_id) VALUES (?, ?, ?, ?, ?)`);
-  stmt.run(name, price, image || '', stock || 1, category_id || null, function(err){
+  stmt.run(name, price, image || '', stock !== undefined ? stock : 1, category_id || null, function(err){
     if(err) {
       console.error(err);
       return res.status(500).send('db error');
@@ -394,7 +464,7 @@ app.put('/api/products/:id', (req, res) => {
   if(!name || !price) return res.status(400).send('name and price are required');
 
   db.run('UPDATE products SET name = ?, price = ?, image = ?, stock = ?, category_id = ? WHERE id = ?', 
-    [name, price, image || '', stock || 1, category_id || null, id], function(err) {
+    [name, price, image || '', stock !== undefined ? stock : 1, category_id || null, id], function(err) {
     if(err) return res.status(500).send('db error');
     res.json({ success: true, changes: this.changes });
   });
@@ -545,20 +615,126 @@ app.get('/api/products/export-template', (req, res) => {
 
 // --- API: создание заказа ---
 app.post('/api/orders', (req, res) => {
-  const { name, phone, address, items, total, location } = req.body || {};
+  const { name, phone, address, items, total, location, telegram_id } = req.body || {};
   if(!name || !phone) return res.status(400).send('name and phone are required');
 
-  const stmt = db.prepare(`INSERT INTO orders (name,phone,address,items,total) VALUES (?,?,?,?,?)`);
-  stmt.run(name, phone, address || '', JSON.stringify(items||{}), total || 0, async function(err){
+  // Если есть telegram_id, найдем user_id
+  if (telegram_id) {
+    db.get('SELECT id FROM users WHERE telegram_id = ?', [telegram_id], (err, user) => {
+      const userId = user ? user.id : null;
+      insertOrder(name, phone, address, items, total, location, userId, res);
+    });
+  } else {
+    insertOrder(name, phone, address, items, total, location, null, res);
+  }
+});
+
+function insertOrder(name, phone, address, items, total, location, userId, res) {
+  const stmt = db.prepare(`INSERT INTO orders (name,phone,address,items,total,user_id) VALUES (?,?,?,?,?,?)`);
+  stmt.run(name, phone, address || '', JSON.stringify(items||{}), total || 0, userId, async function(err){
     if(err) {
       console.error(err);
       return res.status(500).send('db error');
+    }
+
+    // Если пользователь авторизован, обновляем его контактные данные
+    if (userId && phone) {
+      db.run(`UPDATE users SET phone = ?, address = ? WHERE id = ?`, [phone, address || '', userId], (err) => {
+        if (err) console.error('Error updating user contact info:', err);
+      });
     }
 
     // 📩 Отправляем заказ в Telegram с координатами
     await sendOrderToTelegram({ name, phone, address, items, total, location });
 
     res.json({ id: this.lastID });
+  });
+}
+
+// --- TELEGRAM АВТОРИЗАЦИЯ ---
+// Проверка подписи данных от Telegram
+function checkTelegramAuthorization(data) {
+  const secret = crypto.createHash('sha256')
+    .update(process.env.BOT_TOKEN)
+    .digest();
+  
+  const { hash, ...userData } = data;
+  
+  const dataCheckString = Object.keys(userData)
+    .sort()
+    .map(key => `${key}=${userData[key]}`)
+    .join('\n');
+  
+  const hmac = crypto.createHmac('sha256', secret)
+    .update(dataCheckString)
+    .digest('hex');
+  
+  return hmac === hash;
+}
+
+// API: авторизация через Telegram
+app.post('/api/auth/telegram', express.json(), (req, res) => {
+  const telegramData = req.body;
+  
+  // Проверяем подпись данных
+  if (!checkTelegramAuthorization(telegramData)) {
+    return res.status(401).json({ success: false, error: 'Invalid authorization data' });
+  }
+  
+  // Сохраняем или обновляем пользователя в базе
+  const { id, first_name, last_name, username, photo_url } = telegramData;
+  
+  db.run(`
+    INSERT INTO users (telegram_id, first_name, last_name, username, photo_url)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(telegram_id) 
+    DO UPDATE SET 
+      first_name = excluded.first_name,
+      last_name = excluded.last_name,
+      username = excluded.username,
+      photo_url = excluded.photo_url
+  `, [id, first_name, last_name || '', username || '', photo_url || ''], function(err) {
+    if (err) {
+      console.error('Error saving user:', err);
+      return res.status(500).json({ success: false, error: 'Database error' });
+    }
+    
+    res.json({ 
+      success: true, 
+      user: { id, first_name, last_name, username, photo_url },
+      dbUserId: this.lastID
+    });
+  });
+});
+
+// API: получить данные пользователя
+app.get('/api/user/:telegram_id', (req, res) => {
+  const { telegram_id } = req.params;
+  
+  db.get(`
+    SELECT first_name, last_name, username, phone, address, photo_url
+    FROM users
+    WHERE telegram_id = ?
+  `, [telegram_id], (err, user) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  });
+});
+
+// API: получить историю заказов пользователя
+app.get('/api/user/orders/:telegram_id', (req, res) => {
+  const { telegram_id } = req.params;
+  
+  db.all(`
+    SELECT o.* 
+    FROM orders o
+    JOIN users u ON o.user_id = u.id
+    WHERE u.telegram_id = ?
+    ORDER BY o.created_at DESC
+  `, [telegram_id], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Database error' });
+    res.json(rows.map(r => ({...r, items: JSON.parse(r.items || '{}')})));
   });
 });
 

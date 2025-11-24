@@ -1,4 +1,114 @@
 
+// ============= АВТОРИЗАЦИЯ ЧЕРЕЗ TELEGRAM =============
+let currentUser = JSON.parse(localStorage.getItem('telegram_user')) || null;
+
+// Проверка авторизации при загрузке
+function checkAuth() {
+  console.log('checkAuth called, currentUser:', currentUser);
+  if (currentUser) {
+    showUserInfo();
+  } else {
+    showLoginButton();
+  }
+}
+
+// Показать информацию о пользователе
+function showUserInfo() {
+  document.getElementById('user-info').style.display = 'block';
+  document.getElementById('user-name').textContent = currentUser.first_name;
+  document.getElementById('telegram-login-btn').style.display = 'none';
+}
+
+// Показать кнопку входа
+function showLoginButton() {
+  console.log('showLoginButton called');
+  const btn = document.getElementById('telegram-login-btn');
+  const userInfo = document.getElementById('user-info');
+  
+  if (btn) {
+    btn.style.display = 'inline-flex';
+    console.log('Login button display set to inline-flex');
+  } else {
+    console.error('telegram-login-btn element not found');
+  }
+  
+  if (userInfo) {
+    userInfo.style.display = 'none';
+  }
+}
+
+// Открыть модальное окно Telegram авторизации
+function openTelegramModal() {
+  const modal = document.getElementById('telegram-login-modal');
+  modal.style.display = 'grid';
+  
+  // Загружаем виджет Telegram, если еще не загружен
+  const widget = document.getElementById('telegram-login-widget');
+  if (!widget.hasChildNodes()) {
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+    script.setAttribute('data-telegram-login', 'MerosSayramBot');
+    script.setAttribute('data-size', 'large');
+    script.setAttribute('data-radius', '8');
+    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    script.setAttribute('data-request-access', 'write');
+    widget.appendChild(script);
+  }
+}
+
+// Закрыть модальное окно
+function closeTelegramModal() {
+  document.getElementById('telegram-login-modal').style.display = 'none';
+}
+
+// Callback после успешной авторизации через Telegram
+function onTelegramAuth(user) {
+  console.log('Telegram auth:', user);
+  
+  // Отправляем данные на сервер для проверки
+  fetch('/api/auth/telegram', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(user)
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      currentUser = user;
+      localStorage.setItem('telegram_user', JSON.stringify(user));
+      showUserInfo();
+      closeTelegramModal();
+      showToastNotification(`Добро пожаловать, ${user.first_name}! 👋`);
+    } else {
+      alert('Ошибка авторизации');
+    }
+  })
+  .catch(err => {
+    console.error('Ошибка:', err);
+    alert('Ошибка при авторизации');
+  });
+}
+
+// Выход
+function logout() {
+  if (confirm('Выйти из аккаунта?')) {
+    currentUser = null;
+    localStorage.removeItem('telegram_user');
+    showLoginButton();
+    showToastNotification('Вы вышли из аккаунта');
+  }
+}
+
+// Показать корзину с товарами
+function showCart() {
+  const modal = document.getElementById('cart');
+  modal.style.display = 'block';
+  renderCart(); // Отрисовываем товары в корзине
+}
+
+// ============= ОСНОВНОЙ КОД =============
+
 let PRODUCTS = [];
 let CATEGORIES = [];
 let currentCategoryId = null;
@@ -112,20 +222,23 @@ function renderProducts(list){
     // Используем placeholder если нет изображения
     const imageUrl = p.image || p.img || '/assets/placeholder.svg';
     
+    // Проверяем наличие товара
+    const inStock = p.stock === 1 || p.stock === true;
+    const priceHtml = inStock 
+      ? `<div class="price" style="flex-shrink:0">${p.price.toLocaleString('ru-RU')} ₸</div>`
+      : `<div class="out-of-stock" style="flex-shrink:0;color:#ef4444;font-weight:700;font-size:14px">Нет в наличии</div>`;
+    
    el.innerHTML = `
   <img src="${imageUrl}" alt="${p.name}" onerror="this.src='/assets/placeholder.svg'" />
   <div class="body">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-      <div style="flex:1">
-        <div style="font-weight:700;margin-bottom:4px">${p.name}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div class="price" style="white-space:nowrap">${p.price.toLocaleString('ru-RU')} ₸</div>
-      </div>
+    <div style="margin-bottom:8px">
+      <div style="font-weight:700;margin-bottom:6px">${p.name}</div>
     </div>
-    <div style="margin-top:10px;display:flex;gap:8px;justify-content:space-between;align-items:center">
-      <div class="muted">В наличии: ${p.stock ? 'да' : 'нет'}</div>
-      <div><button class="btn" data-id="${p.id}" ${!p.stock ? 'disabled' : ''}>В корзину</button></div>
+    <div style="display:flex;gap:8px;justify-content:space-between;align-items:center">
+      ${priceHtml}
+      <button class="btn cart-btn" data-id="${p.id}" ${!inStock ? 'disabled' : ''} title="${inStock ? 'Добавить в корзину' : 'Товар недоступен'}">
+        Купить
+      </button>
     </div>
   </div>
 `;
@@ -192,12 +305,15 @@ function changePage(page) {
 function addToCart(id){ 
   cart[id] = (cart[id]||0)+1; 
   saveCart(); 
-  flashCartCount(); 
+  updateCartCount();
+  flashCartCount();
+  showToastNotification('Товар добавлен в корзину!');
 }
 
 function removeFromCart(id){ 
   delete cart[id]; 
-  saveCart(); 
+  saveCart();
+  updateCartCount();
 }
 
 function changeQty(id, delta){ 
@@ -207,7 +323,8 @@ function changeQty(id, delta){
   } else {
     cart[id] = newQty;
   }
-  saveCart(); 
+  saveCart();
+  updateCartCount();
 }
 
 function setQty(id, newQty) {
@@ -218,6 +335,7 @@ function setQty(id, newQty) {
     cart[id] = newQty;
   }
   saveCart();
+  updateCartCount();
 }
 
 function renderCart(){
@@ -248,8 +366,8 @@ function renderCart(){
       <div style="text-align:right">
         <div class="qty">
           <button class="btn secondary" data-action="dec" data-id="${id}">-</button>
-          <input type="number" class="qty-input" value="${qty}" min="1" data-id="${id}" />
-          <button class="btn" data-action="inc" data-id="${id}">+</button>
+          <input type="number" inputmode="numeric" pattern="[0-9]*" class="qty-input" value="${qty}" min="1" data-id="${id}" />
+          <button class="btn secondary" data-action="inc" data-id="${id}">+</button>
         </div>
         <div style="margin-top:6px">
           <button class="btn secondary" data-action="del" data-id="${id}">Удалить</button>
@@ -316,6 +434,22 @@ function flashCartCount(){
   ], {duration:300}); 
 }
 
+// Обновить счетчик корзины
+function updateCartCount() {
+  let count = 0;
+  for (const id in cart) {
+    count += cart[id];
+  }
+  document.getElementById('cart-count').textContent = count;
+  
+  // Обновляем мобильный счетчик, если он есть
+  const mobileCount = document.getElementById('mobile-cart-count');
+  if (mobileCount) {
+    mobileCount.textContent = count;
+    mobileCount.style.display = count > 0 ? 'flex' : 'none';
+  }
+}
+
 // Инициализация
 loadCategories();
 loadProducts();
@@ -337,13 +471,13 @@ document.getElementById('reset').addEventListener('click', ()=>{
 
 // Корзина
 document.getElementById('open-cart').addEventListener('click', ()=>{ 
-  const c = document.getElementById('cart'); 
-  c.style.display = c.style.display === 'none' ? 'block' : 'none'; 
+  showCart();
 });
 
 document.getElementById('clear-cart').addEventListener('click', ()=>{ 
   for(const k in cart) delete cart[k]; 
-  saveCart(); 
+  saveCart();
+  updateCartCount();
 });
 
 // Закрытие корзины
@@ -352,7 +486,7 @@ document.getElementById('close-cart').addEventListener('click', ()=>{
 });
 
 // Оформление заказа
-document.getElementById('checkout').addEventListener('click', ()=>{
+document.getElementById('checkout').addEventListener('click', async ()=>{
   const keys = Object.keys(cart);
   if (keys.length === 0) {
     alert('Корзина пустая');
@@ -361,6 +495,49 @@ document.getElementById('checkout').addEventListener('click', ()=>{
 
   const cartEl = document.getElementById('cart');
   const modalEl = document.getElementById('modal');
+
+  // Если пользователь авторизован, загружаем его данные
+  if (currentUser) {
+    try {
+      const response = await fetch(`/api/user/${currentUser.id}`);
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('User data loaded:', userData);
+        
+        // Автоматически заполняем поля
+        const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+        document.getElementById('name').value = fullName || currentUser.first_name;
+        document.getElementById('phone').value = userData.phone || '';
+        document.getElementById('address').value = userData.address || '';
+        
+        // Меняем подсказку
+        const desc = document.getElementById('order-description');
+        if (desc) {
+          if (userData.phone) {
+            desc.textContent = '✅ Ваши данные загружены автоматически. Вы можете их изменить.';
+            desc.style.color = '#10b981';
+          } else {
+            desc.textContent = '📱 Введите ваш номер телефона - он сохранится для следующих заказов.';
+            desc.style.color = '#2b6cb0';
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error loading user data:', err);
+    }
+  } else {
+    // Очищаем поля для гостя
+    document.getElementById('name').value = '';
+    document.getElementById('phone').value = '';
+    document.getElementById('address').value = '';
+    
+    // Обычная подсказка для гостя
+    const desc = document.getElementById('order-description');
+    if (desc) {
+      desc.textContent = 'Войдите через Telegram, чтобы не вводить данные каждый раз.';
+      desc.style.color = '#6b7280';
+    }
+  }
 
   cartEl.classList.add('fade-out');
 
@@ -382,6 +559,13 @@ document.getElementById('cancel').addEventListener('click', ()=>{
 });
 
 document.getElementById('place').addEventListener('click', async ()=>{
+  const placeBtn = document.getElementById('place');
+  
+  // Проверяем, не обрабатывается ли уже заказ
+  if (placeBtn.disabled) {
+    return;
+  }
+  
   const name = document.getElementById('name').value.trim();
   const phone = document.getElementById('phone').value.trim();
   const address = document.getElementById('address').value.trim();
@@ -391,6 +575,13 @@ document.getElementById('place').addEventListener('click', async ()=>{
     return;
   }
 
+  // Блокируем кнопку и меняем текст
+  placeBtn.disabled = true;
+  const originalText = placeBtn.textContent;
+  placeBtn.textContent = 'Отправка...';
+  placeBtn.style.opacity = '0.6';
+  placeBtn.style.cursor = 'not-allowed';
+
   const total = calculateTotal();
   
   const orderData = {
@@ -399,7 +590,8 @@ document.getElementById('place').addEventListener('click', async ()=>{
     address: address,
     location: userLocation, // Добавляем координаты если есть
     items: {...cart},
-    total: total
+    total: total,
+    telegram_id: currentUser?.id || null // Добавляем telegram_id если пользователь авторизован
   };
 
   try {
@@ -418,42 +610,107 @@ document.getElementById('place').addEventListener('click', async ()=>{
     const result = await response.json();
     console.log('Заказ сохранен с ID:', result.id);
 
+    // Получаем текущую дату и время
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('ru-RU');
+    const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
     // Показываем чек
     let receiptHTML = `
-      <h3 style="text-align:center">🧾 Чек заказа</h3>
-      <p><strong>Имя:</strong> ${name}</p>
-      <p><strong>Телефон:</strong> ${phone}</p>
-      <p><strong>Адрес:</strong> ${address || '—'}</p>
-      <hr>
-      <table style="width:100%;border-collapse:collapse;font-size:14px">
-        <tr><th style="text-align:left">Товар</th><th>Кол-во</th><th style="text-align:right">Сумма</th></tr>
+      <div style="font-family: 'MS Sans Serif', Arial, sans-serif; max-width: 320px; margin: 0 auto; padding: 20px; background: white;">
+        <!-- Шапка -->
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">" МЕРОС "</div>
+          <div style="font-size: 13px;">Телефон: +7 702 913 13 39</div>
+        </div>
+
+        <div style="height: 20px;"></div>
+
+        <!-- Номер чека -->
+        <div style="text-align: center; font-weight: bold; font-size: 13px; margin-bottom: 5px;">
+          ЧЕК НА ПРОДАЖУ № ${result.id}
+        </div>
+        <div style="text-align: center; font-size: 12px; margin-bottom: 15px;">
+          от ${dateStr} ${timeStr}
+        </div>
+
+        <!-- Таблица товаров -->
+        <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 8px 0; font-size: 12px; margin-bottom: 10px;">
+          <div style="margin-bottom: 5px;">Наименование&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Кол-во&nbsp;&nbsp;Цена&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Итог</div>
+        </div>
+
+        <!-- Товары -->
+        <div style="font-size: 12px;">
     `;
 
+    let itemCount = 0;
     for (const idStr in cart) {
       const id = Number(idStr);
       const qty = cart[id];
       const p = PRODUCTS.find(x => x.id === id);
       if (p) {
-        const line = (p.price * qty).toLocaleString('ru-RU');
+        itemCount++;
+        const itemTotal = (p.price * qty).toLocaleString('ru-RU');
+        const pricePerUnit = p.price.toLocaleString('ru-RU');
         receiptHTML += `
-          <tr>
-            <td>${p.name}</td>
-            <td style="text-align:center">${qty}</td>
-            <td style="text-align:right">${line} ₸</td>
-          </tr>`;
+          <div style="margin-bottom: 8px;">
+            ${itemCount}). ${p.name} / ${qty} шт. х ${pricePerUnit} = ${itemTotal} ₸
+          </div>
+        `;
       }
     }
 
+    // Сумма прописью (упрощенная версия)
+    const totalInWords = numberToWords(total);
+
     receiptHTML += `
-      </table>
-      <hr>
-      <h4 style="text-align:right">Итого: ${total.toLocaleString('ru-RU')} ₸</h4>
-      <div style="text-align:center;margin-top:12px">
-        <strong>✅ Заказ №${result.id} успешно оформлен!</strong>
-      </div>
-      <div style="text-align:center;margin-top:12px;display:flex;gap:10px;justify-content:center">
-        <button id="download-pdf" class="btn secondary">Скачать PDF</button>
-        <button id="close-receipt" class="btn">Закрыть</button>
+        </div>
+
+        <!-- Итого наименований -->
+        <div style="font-size: 12px; margin-bottom: 15px;">
+          Всего наименований: ${itemCount}
+        </div>
+
+        <!-- Итого сумма -->
+        <div style="border-top: 1px solid #000; padding-top: 10px; margin-bottom: 5px;">
+          <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: bold;">
+            <span>ИТОГО:</span>
+            <span>${total.toLocaleString('ru-RU')} ₸</span>
+          </div>
+        </div>
+
+        <!-- Сумма прописью -->
+        <div style="text-align: right; font-size: 10px; color: #666; margin-bottom: 15px;">
+          (${totalInWords})
+        </div>
+
+        <!-- Данные покупателя -->
+        <div style="font-size: 12px; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+          <div style="margin-bottom: 5px;"><strong>Покупатель:</strong> ${name}</div>
+          <div style="margin-bottom: 5px;"><strong>Телефон:</strong> ${phone}</div>
+          ${address ? `<div><strong>Адрес доставки:</strong> ${address}</div>` : ''}
+        </div>
+
+        <!-- Спасибо -->
+        <div style="text-align: center; font-weight: bold; font-size: 13px; margin: 20px 0;">
+          СПАСИБО ЗА ПОКУПКУ!
+        </div>
+
+        <!-- Успешное оформление -->
+        <div style="text-align: center; background: #10b981; color: white; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+          <strong>✅ Заказ №${result.id} успешно оформлен!</strong>
+        </div>
+
+        <!-- Кнопки -->
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button id="download-pdf" class="btn secondary">📥 Скачать PDF</button>
+          <button id="close-receipt" class="btn">Закрыть</button>
+        </div>
+
+        <!-- Продавец -->
+        <div style="text-align: center; font-size: 13px; margin-top: 20px; color: #666;">
+          Частное лицо
+        </div>
       </div>
     `;
 
@@ -467,6 +724,12 @@ document.getElementById('place').addEventListener('click', async ()=>{
     // Очищаем корзину
     for (const k in cart) delete cart[k];
     saveCart();
+    
+    // Сбрасываем кнопку после успешного оформления
+    placeBtn.disabled = false;
+    placeBtn.textContent = originalText;
+    placeBtn.style.opacity = '1';
+    placeBtn.style.cursor = 'pointer';
 
     document.getElementById('close-receipt').addEventListener('click', ()=>{
       receiptBox.remove();
@@ -487,8 +750,91 @@ document.getElementById('place').addEventListener('click', async ()=>{
   } catch (error) {
     console.error('Ошибка при оформлении заказа:', error);
     alert('Произошла ошибка при оформлении заказа. Попробуйте еще раз.');
+    
+    // Разблокируем кнопку при ошибке
+    placeBtn.disabled = false;
+    placeBtn.textContent = originalText;
+    placeBtn.style.opacity = '1';
+    placeBtn.style.cursor = 'pointer';
   }
 });
+
+// Функция преобразования числа в слова (упрощенная)
+function numberToWords(num) {
+  const units = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+  const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+  const tens = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
+  const hundreds = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
+  const thousands = ['', 'одна', 'две', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+  
+  if (num === 0) return 'ноль тенге';
+  
+  let result = '';
+  
+  // Миллионы
+  if (num >= 1000000) {
+    const millions = Math.floor(num / 1000000);
+    result += convertLessThanThousand(millions, units, teens, tens, hundreds) + ' миллион ';
+    num %= 1000000;
+  }
+  
+  // Тысячи
+  if (num >= 1000) {
+    const thousandsNum = Math.floor(num / 1000);
+    if (thousandsNum >= 100) {
+      result += hundreds[Math.floor(thousandsNum / 100)] + ' ';
+    }
+    const rest = thousandsNum % 100;
+    if (rest >= 10 && rest < 20) {
+      result += teens[rest - 10] + ' ';
+    } else {
+      if (rest >= 20) result += tens[Math.floor(rest / 10)] + ' ';
+      const lastDigit = rest % 10;
+      if (lastDigit > 0) result += thousands[lastDigit] + ' ';
+    }
+    
+    const lastDigit = thousandsNum % 10;
+    const lastTwoDigits = thousandsNum % 100;
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+      result += 'тысяч ';
+    } else if (lastDigit === 1) {
+      result += 'тысяча ';
+    } else if (lastDigit >= 2 && lastDigit <= 4) {
+      result += 'тысячи ';
+    } else {
+      result += 'тысяч ';
+    }
+    
+    num %= 1000;
+  }
+  
+  // Сотни, десятки, единицы
+  result += convertLessThanThousand(num, units, teens, tens, hundreds);
+  
+  return (result.trim() + ' тенге').charAt(0).toUpperCase() + (result.trim() + ' тенге').slice(1);
+}
+
+function convertLessThanThousand(num, units, teens, tens, hundreds) {
+  let result = '';
+  
+  if (num >= 100) {
+    result += hundreds[Math.floor(num / 100)] + ' ';
+    num %= 100;
+  }
+  
+  if (num >= 10 && num < 20) {
+    result += teens[num - 10] + ' ';
+  } else {
+    if (num >= 20) {
+      result += tens[Math.floor(num / 10)] + ' ';
+    }
+    if (num % 10 > 0) {
+      result += units[num % 10] + ' ';
+    }
+  }
+  
+  return result;
+}
 
 function calculateTotal(){ 
   let total=0; 
@@ -587,4 +933,260 @@ document.getElementById('get-location').addEventListener('click', function(e) {
       maximumAge: 0
     }
   );
+});
+
+// ============================================
+// НИЖНЯЯ НАВИГАЦИЯ ДЛЯ МОБИЛЬНЫХ
+// ============================================
+
+// Инициализация нижней навигации
+document.addEventListener('DOMContentLoaded', () => {
+  const navItems = document.querySelectorAll('.bottom-nav .nav-item');
+  const mobileCartCount = document.getElementById('mobile-cart-count');
+  
+  // Обработчики для кнопок навигации
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      const page = item.getAttribute('data-page');
+      handleBottomNavClick(page);
+      
+      // Обновляем активный элемент
+      navItems.forEach(nav => nav.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+  
+  // Синхронизация счетчика корзины
+  const updateMobileCartCount = () => {
+    const count = document.getElementById('cart-count').textContent;
+    if (mobileCartCount) {
+      mobileCartCount.textContent = count;
+      mobileCartCount.style.display = count === '0' ? 'none' : 'flex';
+    }
+  };
+  
+  // Наблюдаем за изменениями в основном счетчике корзины
+  const cartCountObserver = new MutationObserver(updateMobileCartCount);
+  const cartCountElement = document.getElementById('cart-count');
+  if (cartCountElement) {
+    cartCountObserver.observe(cartCountElement, { childList: true, characterData: true, subtree: true });
+  }
+  
+  // Первичная синхронизация
+  updateMobileCartCount();
+});
+
+// Обработка кликов по нижней навигации
+function handleBottomNavClick(page) {
+  switch(page) {
+    case 'home':
+      // Возврат на главную - ТОЛЬКО прокрутка, без открытия каталога
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // Закрываем каталог если он открыт
+      const sidebar = document.getElementById('categories-sidebar');
+      const overlay = document.getElementById('categories-overlay');
+      if (sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+      }
+      break;
+      
+    case 'catalog':
+      // Открываем меню категорий
+      toggleCategoriesMenu();
+      break;
+      
+    case 'cart':
+      // Открываем корзину с товарами
+      showCart();
+      break;
+      
+    case 'favorites':
+      // Заглушка для избранного
+      alert('Раздел "Избранное" в разработке');
+      break;
+      
+    case 'profile':
+      // Открываем профиль
+      showProfileSection();
+      break;
+  }
+}
+
+// Показать секцию профиля
+function showProfileSection() {
+  if (!currentUser) {
+    // Если не авторизован, открываем модальное окно входа
+    openTelegramModal();
+    return;
+  }
+  
+  // Если авторизован, показываем профиль
+  const modal = document.getElementById('profile-modal');
+  modal.style.display = 'grid';
+  
+  // Заполняем данные профиля
+  document.getElementById('profile-name').textContent = `${currentUser.first_name} ${currentUser.last_name || ''}`.trim();
+  document.getElementById('profile-username').textContent = currentUser.username ? `@${currentUser.username}` : `ID: ${currentUser.id}`;
+}
+
+// Показать историю заказов из профиля
+function showOrderHistoryFromProfile() {
+  document.getElementById('profile-modal').style.display = 'none';
+  showOrderHistory();
+}
+
+// Выход из аккаунта из профиля
+function logoutFromProfile() {
+  document.getElementById('profile-modal').style.display = 'none';
+  logout();
+}
+
+// Вернуться в профиль из истории заказов
+function backToProfile() {
+  document.getElementById('order-history-modal').style.display = 'none';
+  document.getElementById('profile-modal').style.display = 'grid';
+}
+
+// Показать историю заказов
+async function showOrderHistory() {
+  const modal = document.getElementById('order-history-modal');
+  modal.style.display = 'grid';
+  
+  const content = document.getElementById('order-history-content');
+  content.innerHTML = '<div style="text-align: center; padding: 20px;">Загрузка истории заказов...</div>';
+  
+  try {
+    const response = await fetch(`/api/user/orders/${currentUser.id}`);
+    const orders = await response.json();
+    
+    if (orders.length === 0) {
+      content.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px;">
+          <p style="color: #6b7280; margin-bottom: 20px;">У вас пока нет заказов</p>
+          <button class="btn" onclick="document.getElementById('order-history-modal').style.display='none'">
+            Начать покупки
+          </button>
+        </div>
+      `;
+      return;
+    }
+    
+    let html = '';
+    
+    orders.forEach(order => {
+      const statusText = {
+        'new': '🆕 Новый',
+        'processing': '⏳ В обработке',
+        'completed': '✅ Завершен',
+        'cancelled': '❌ Отменен'
+      }[order.status] || order.status;
+      
+      const date = new Date(order.created_at).toLocaleDateString('ru-RU', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      html += `
+        <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--accent);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong style="font-size: 16px;">Заказ #${order.id}</strong>
+            <span style="background: #e0f2fe; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500;">
+              ${statusText}
+            </span>
+          </div>
+          <div style="font-size: 12px; color: #6b7280; margin-bottom: 12px;">
+            ${date}
+          </div>
+          <div style="font-size: 14px; color: #374151; margin-bottom: 10px; line-height: 1.6;">
+            ${Object.entries(order.items).map(([id, qty]) => {
+              const product = PRODUCTS.find(p => p.id == id);
+              return product ? `• ${product.name} × ${qty}` : `• Товар #${id} × ${qty}`;
+            }).join('<br>')}
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+            <span style="color: #6b7280; font-size: 14px;">
+              📍 ${order.address || 'Не указан'}
+            </span>
+            <strong style="font-size: 16px; color: var(--accent);">
+              ${order.total.toLocaleString('ru-RU')} ₸
+            </strong>
+          </div>
+        </div>
+      `;
+    });
+    
+    content.innerHTML = html;
+    
+  } catch (error) {
+    console.error('Ошибка загрузки истории:', error);
+    content.innerHTML = `
+      <div style="text-align: center; padding: 20px; color: #ef4444;">
+        ❌ Ошибка загрузки истории заказов
+      </div>
+    `;
+  }
+}
+
+// Обновляем функцию закрытия корзины для сброса активной кнопки
+const originalCloseCart = document.getElementById('close-cart');
+if (originalCloseCart) {
+  originalCloseCart.addEventListener('click', () => {
+    // Сбрасываем активную кнопку на "Главная"
+    const navItems = document.querySelectorAll('.bottom-nav .nav-item');
+    navItems.forEach(item => item.classList.remove('active'));
+    const homeBtn = document.querySelector('.bottom-nav .nav-item[data-page="home"]');
+    if (homeBtn) homeBtn.classList.add('active');
+  });
+}
+
+// ============================================
+// УВЕДОМЛЕНИЕ О ДОБАВЛЕНИИ В КОРЗИНУ
+// ============================================
+
+function showToastNotification(message) {
+  // Удаляем предыдущее уведомление если есть
+  const existingToast = document.querySelector('.toast-notification');
+  if (existingToast) {
+    existingToast.remove();
+  }
+
+  // Создаем новое уведомление
+  const toast = document.createElement('div');
+  toast.className = 'toast-notification';
+  toast.textContent = message;
+  
+  document.body.appendChild(toast);
+
+  // Удаляем через 2 секунды
+  setTimeout(() => {
+    toast.remove();
+  }, 2000);
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOMContentLoaded fired');
+  checkAuth(); // Проверяем авторизацию
+  loadCategories();
+  loadProducts();
+  updateCartCount();
+  
+  // Обработчик кнопки входа через Telegram
+  const loginBtn = document.getElementById('telegram-login-btn');
+  if (loginBtn) {
+    console.log('Adding click handler to login button');
+    loginBtn.addEventListener('click', () => {
+      console.log('Login button clicked!');
+      openTelegramModal();
+    });
+  } else {
+    console.error('Login button not found in DOM');
+  }
+  
+  // Обработчик клика по имени пользователя (выход)
+  document.getElementById('user-info')?.addEventListener('click', logout);
 });

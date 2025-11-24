@@ -3,19 +3,28 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Магазин цемента  Мерос</title>
+  <title>МЕРОС Строймаркет</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <header>
     <button class="hamburger-btn" id="hamburger-btn" onclick="toggleCategoriesMenu()"></button>
     <div class="brand">
-      <div class="logo">М</div>
+      <img src="/assets/logo.png" alt="MEROS" style="height: 50px; margin-right: 10px;">
       <div>
-        <h1>      Магазин Мерос</h1>
+        <h1>МЕРОС Строймаркет</h1>
       </div>
     </div>
     <div class="controls">
+      <div id="user-info" style="display: none; margin-right: 15px;">
+        <span style="font-size: 14px; font-weight: 500;">👤 <span id="user-name"></span></span>
+      </div>
+      <button class="btn secondary" id="telegram-login-btn" style="display: none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white" style="margin-right: 5px; vertical-align: middle;">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.764 8.318c-.132.591-.473.737-.96.459l-2.65-1.953-1.279 1.231c-.141.141-.26.26-.533.26l.19-2.697 4.898-4.425c.213-.19-.046-.295-.33-.105l-6.05 3.813-2.606-.814c-.567-.177-.578-.567.118-.841l10.184-3.925c.472-.177.885.113.732.841z"/>
+        </svg>
+        Войти
+      </button>
       <button class="btn" id="open-cart">Корзина (<span id="cart-count">0</span>)</button>
     </div>
   </header>
@@ -50,8 +59,8 @@
 
   <aside class="cart" id="cart" style="display:none">
   <div class="cart-header">
-    <h3> Корзина</h3>
-    <button class="btn secondary" id="close-cart"></button>
+    <h3>🛒 Корзина</h3>
+    <button class="btn secondary close-btn" id="close-cart">✕</button>
   </div>
   <div id="cart-items"></div>
   <div class="footer">
@@ -71,9 +80,16 @@
   <div id="modal" class="modal" style="display:none">
     <div class="modal-card">
       <h3>Оформление заказа</h3>
-      <p class="muted">Заказы сохраняются в базе на сервере.</p>
+      <p class="muted" id="order-description">Заказы сохраняются в базе на сервере.</p>
       <input id="name" placeholder="ФИО" />
-      <input id="phone" placeholder="Телефон" />
+      <div style="position: relative;">
+        <input id="phone" placeholder="Телефон" />
+        <a href="https://t.me/MerosSayramBot?start=phone" target="_blank" class="btn-phone-help" title="Отправить номер через бота">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.764 8.318c-.132.591-.473.737-.96.459l-2.65-1.953-1.279 1.231c-.141.141-.26.26-.533.26l.19-2.697 4.898-4.425c.213-.19-.046-.295-.33-.105l-6.05 3.813-2.606-.814c-.567-.177-.578-.567.118-.841l10.184-3.925c.472-.177.885.113.732.841z"/>
+          </svg>
+        </a>
+      </div>
       
       <div style="position: relative; margin-bottom: 10px;">
         <input id="address" placeholder="Адрес доставки" style="padding-right: 45px;" />
@@ -88,6 +104,107 @@
       <div class="modal-actions">
         <button class="btn secondary" id="cancel">Отмена</button>
         <button class="btn" id="place">Подтвердить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Нижняя навигация для мобильных устройств -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="nav-item active" data-page="home">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span class="nav-label">Главная</span>
+    </button>
+    
+    <button class="nav-item" data-page="catalog">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/>
+        <rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      <span class="nav-label">Каталог</span>
+    </button>
+    
+    <button class="nav-item" data-page="cart">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="9" cy="21" r="1"/>
+        <circle cx="20" cy="21" r="1"/>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+      </svg>
+      <span class="nav-label">Корзина</span>
+      <span class="nav-badge" id="mobile-cart-count">0</span>
+    </button>
+    
+    <button class="nav-item" data-page="favorites">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+      <span class="nav-label">Избранное</span>
+    </button>
+    
+    <button class="nav-item" data-page="profile">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span class="nav-label">Профиль</span>
+    </button>
+  </nav>
+
+  <!-- Модальное окно профиля -->
+  <div id="profile-modal" class="modal" style="display: none;">
+    <div class="modal-card" style="max-width: 400px; text-align: center;">
+      <h3 style="margin-bottom: 20px;">👤 Профиль</h3>
+      
+      <div id="profile-info" style="background: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+        <div style="font-size: 48px; margin-bottom: 10px;">👤</div>
+        <div id="profile-name" style="font-size: 18px; font-weight: 600; margin-bottom: 5px;"></div>
+        <div id="profile-username" style="font-size: 14px; color: #6b7280;"></div>
+      </div>
+      
+      <button class="btn" onclick="showOrderHistoryFromProfile()" style="width: 100%; margin-bottom: 10px;">
+        📦 История заказов
+      </button>
+      
+      <button class="btn secondary" onclick="logoutFromProfile()" style="width: 100%; margin-bottom: 10px;">
+        🚪 Выйти из аккаунта
+      </button>
+      
+      <button class="btn secondary" onclick="document.getElementById('profile-modal').style.display='none'" style="width: 100%;">
+        Закрыть
+      </button>
+    </div>
+  </div>
+
+  <!-- Модальное окно истории заказов -->
+  <div id="order-history-modal" class="modal" style="display: none;">
+    <div class="modal-card" style="max-width: 600px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <button class="btn secondary" onclick="backToProfile()" style="padding: 6px 12px;">← Назад</button>
+        <h3 style="margin: 0;">📦 Мои заказы</h3>
+        <button class="btn secondary" onclick="document.getElementById('order-history-modal').style.display='none'" style="padding: 6px 12px;">✕</button>
+      </div>
+      <div id="order-history-content"></div>
+    </div>
+  </div>
+
+  <!-- Модальное окно авторизации через Telegram -->
+  <div id="telegram-login-modal" class="modal" style="display: none;">
+    <div class="modal-card" style="max-width: 400px; text-align: center;">
+      <h3 style="margin-bottom: 10px;">🔐 Вход через Telegram</h3>
+      <p style="color: #6b7280; font-size: 14px; margin-bottom: 20px;">
+        Войдите, чтобы сохранять историю заказов и получать уведомления
+      </p>
+      
+      <div id="telegram-login-widget" style="display: flex; justify-content: center; margin: 20px 0;"></div>
+      
+      <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+        <button class="btn secondary" onclick="closeTelegramModal()" style="width: 100%;">
+          Продолжить без входа
+        </button>
       </div>
     </div>
   </div>
