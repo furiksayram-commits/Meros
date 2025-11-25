@@ -17,6 +17,7 @@ function showUserInfo() {
   document.getElementById('user-info').style.display = 'block';
   document.getElementById('user-name').textContent = currentUser.first_name;
   document.getElementById('telegram-login-btn').style.display = 'none';
+  document.getElementById('desktop-info-btn').style.display = 'inline-flex';
 }
 
 // Показать кнопку входа
@@ -24,12 +25,17 @@ function showLoginButton() {
   console.log('showLoginButton called');
   const btn = document.getElementById('telegram-login-btn');
   const userInfo = document.getElementById('user-info');
+  const infoBtn = document.getElementById('desktop-info-btn');
   
   if (btn) {
     btn.style.display = 'inline-flex';
     console.log('Login button display set to inline-flex');
   } else {
     console.error('telegram-login-btn element not found');
+  }
+  
+  if (infoBtn) {
+    infoBtn.style.display = 'inline-flex';
   }
   
   if (userInfo) {
@@ -1001,9 +1007,9 @@ function handleBottomNavClick(page) {
       showCart();
       break;
       
-    case 'favorites':
-      // Заглушка для избранного
-      alert('Раздел "Избранное" в разработке');
+    case 'info':
+      // Открываем модальное окно с информацией о магазине
+      document.getElementById('info-modal').style.display = 'grid';
       break;
       
     case 'profile':

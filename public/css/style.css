@@ -549,12 +549,38 @@ input[type="search"], input{width:100%;padding:10px;border-radius:8px;border:1px
     font-size: 13px;
     min-width: 36px;
   }
+  
+  /* На мобильных инфо-модалка тоже на весь экран */
+  .info-modal-desktop .info-modal-card {
+    width: 100%;
+    max-width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
 }
 
 /* Планшеты - корзина средней ширины */
 @media (min-width: 769px) and (max-width: 900px) {
   .cart {
     width: 450px !important;
+  }
+}
+
+/* Десктоп - инфо-модалка остается нормального размера */
+@media (min-width: 769px) {
+  .info-modal-desktop {
+    align-items: center;
+    padding: 20px;
+  }
+  
+  .info-modal-desktop .info-modal-card {
+    width: 90%;
+    max-width: 700px;
+    height: auto;
+    max-height: 85vh;
+    border-radius: 12px;
+    overflow-y: auto;
   }
 }
 
