@@ -495,7 +495,8 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
     // Конвертируем в JSON
     const data = XLSX.utils.sheet_to_json(worksheet);
     
-    let imported = 0;
+  let imported = 0; // вставлено новых
+  let updated = 0;  // обновлено существующих цен
     let errors = [];
 
     // Получаем все категории для поиска по имени
@@ -543,22 +544,75 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
         }
       }
 
-      // Вставляем товар
-      await new Promise((resolve, reject) => {
-        const stmt = db.prepare(
-          `INSERT INTO products (name, price, image, stock, category_id) VALUES (?, ?, ?, ?, ?)`
+      // Находим существующий товар по названию (без учета регистра)
+      const existing = await new Promise((resolve) => {
+        db.get(
+          `SELECT id, price, image FROM products WHERE LOWER(name) = LOWER(?) LIMIT 1`,
+          [name],
+          (err, row) => {
+            if (err) {
+              errors.push(`Строка ${i + 2}: ошибка поиска товара - ${err.message}`);
+              resolve(null);
+            } else {
+              resolve(row || null);
+            }
+          }
         );
-        stmt.run(name, price, image, stockValue, category_id, function(err) {
-          if (err) {
-            errors.push(`Строка ${i + 2}: ошибка БД - ${err.message}`);
-            reject(err);
+      });
+
+      if (existing && existing.id) {
+  // Обновляем цену. Если у товара нет картинки и в excel тоже пусто — поставим дефолт /assets/pch.webp.
+        const normalizedImage = (image && String(image).trim()) ? String(image).trim() : '';
+        const needSetDefaultImage = (!existing.image || String(existing.image).trim() === '') && normalizedImage === '';
+  const imageToSet = needSetDefaultImage ? '/assets/pch.webp' : (normalizedImage || null);
+
+        await new Promise((resolve) => {
+          if (imageToSet !== null) {
+            db.run(
+              `UPDATE products SET price = ?, image = ? WHERE id = ?`,
+              [price, imageToSet, existing.id],
+              (err) => {
+                if (err) {
+                  errors.push(`Строка ${i + 2}: ошибка обновления товара - ${err.message}`);
+                } else {
+                  updated++;
+                }
+                resolve();
+              }
+            );
           } else {
-            imported++;
-            resolve();
+            db.run(
+              `UPDATE products SET price = ? WHERE id = ?`,
+              [price, existing.id],
+              (err) => {
+                if (err) {
+                  errors.push(`Строка ${i + 2}: ошибка обновления цены - ${err.message}`);
+                } else {
+                  updated++;
+                }
+                resolve();
+              }
+            );
           }
         });
-        stmt.finalize();
-      }).catch(() => {});
+      } else {
+        // Вставляем новый товар
+        await new Promise((resolve) => {
+          const stmt = db.prepare(
+            `INSERT INTO products (name, price, image, stock, category_id) VALUES (?, ?, ?, ?, ?)`
+          );
+          const insertImage = (image && String(image).trim()) ? String(image).trim() : '/assets/pch.webp';
+          stmt.run(name, price, insertImage, stockValue, category_id, function(err) {
+            if (err) {
+              errors.push(`Строка ${i + 2}: ошибка вставки - ${err.message}`);
+            } else {
+              imported++;
+            }
+            resolve();
+          });
+          stmt.finalize();
+        });
+      }
     }
 
     // Файл в памяти, не нужно удалять
@@ -566,6 +620,7 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
     res.json({
       success: true,
       imported,
+      updated,
       total: data.length,
       errors
     });

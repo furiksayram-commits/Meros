@@ -1431,7 +1431,7 @@
                     resultDiv.style.background = '#d4edda';
                     resultDiv.style.color = '#155724';
                     
-                    let message = `✓ Успешно импортировано: ${result.imported} из ${result.total} товаров`;
+                    let message = `✓ Новых товаров добавлено: ${result.imported}\n✓ Цены обновлены у: ${result.updated}\nВсего обработано строк: ${result.total}`;
                     
                     if (result.errors && result.errors.length > 0) {
                         message += `\n\nОшибки:\n${result.errors.join('\n')}`;

@@ -220,7 +220,7 @@ function renderProducts(list){
     el.className='card';
     
     // Используем placeholder если нет изображения
-    const imageUrl = p.image || p.img || '/assets/placeholder.svg';
+      const imageUrl = p.image || p.img || '/assets/pch.webp';
     
     // Проверяем наличие товара
     const inStock = p.stock === 1 || p.stock === true;
@@ -229,7 +229,7 @@ function renderProducts(list){
       : `<div class="out-of-stock" style="flex-shrink:0;color:#ef4444;font-weight:700;font-size:14px">Нет в наличии</div>`;
     
    el.innerHTML = `
-  <img src="${imageUrl}" alt="${p.name}" onerror="this.src='/assets/placeholder.svg'" />
+  <img src="${imageUrl}" alt="${p.name}" onerror="this.src='/assets/pch.webp'" />
   <div class="body">
     <div style="margin-bottom:8px">
       <div style="font-weight:700;margin-bottom:6px">${p.name}</div>
@@ -352,13 +352,13 @@ function renderCart(){
     count += qty; 
     total += p.price * qty;
     
-    // Используем placeholder если нет изображения
-    const imageUrl = p.image || p.img || '/assets/placeholder.svg';
+  // Используем дефолт, если нет изображения
+  const imageUrl = p.image || p.img || '/assets/pch.webp';
     
     const it = document.createElement('div'); 
     it.className='cart-item';
     it.innerHTML = `
-      <img src="${imageUrl}" onerror="this.src='/assets/placeholder.svg'" />
+  <img src="${imageUrl}" onerror="this.src='/assets/pch.png'" />
       <div class="meta">
         <div style="font-weight:700">${p.name}</div>
         <div class="muted">${p.price.toLocaleString('ru-RU')} ₸ × ${qty} = <strong>${(p.price*qty).toLocaleString('ru-RU')} ₸</strong></div>
