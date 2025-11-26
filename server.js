@@ -357,11 +357,16 @@ function getProductNameFromDB(id) {
   });
 }
 
+// Функция экранирования специальных символов Markdown
+function escapeMarkdown(text) {
+  return text.replace(/([*_`\[\]])/g, '\\$1');
+}
+
 async function sendOrderToTelegram(order) {
   if (!ADMIN_CHAT_ID || !process.env.BOT_TOKEN) return;
 
   let msg = `🧾 *Новый заказ с сайта*\n\n`;
-  msg += `👤 *Имя:* ${order.name}\n📞 *Телефон:* ${order.phone}\n🏠 *Адрес:* ${order.address || '-'}\n`;
+  msg += `👤 *Имя:* ${escapeMarkdown(order.name)}\n📞 *Телефон:* ${order.phone}\n🏠 *Адрес:* ${escapeMarkdown(order.address || '-')}\n`;
   
   // Добавляем координаты если есть
   if (order.location && order.location.lat && order.location.lon) {
@@ -373,7 +378,7 @@ async function sendOrderToTelegram(order) {
   // Получаем названия товаров из БД
   for (const id in order.items) {
     const productName = await getProductNameFromDB(parseInt(id));
-    msg += `• ${productName} × ${order.items[id]}\n`;
+    msg += `• ${escapeMarkdown(productName)} × ${order.items[id]}\n`;
   }
 
   msg += `\n💰 *Итого:* ${order.total.toLocaleString('ru-RU')} ₸`;
@@ -406,12 +411,7 @@ async function sendOrderNotificationToClient(telegram_id, order) {
   msg += `║     " М Е Р О С "        ║\n`;
   msg += `║   Телефон: +7 702 913 13 39  ║\n`;
   msg += `╚═══════════════════════════╝\n\n`;
-  
-  msg += `┌─────────────────────────────┐\n`;
-  msg += `│  ЧЕК НА ПРОДАЖУ № ${order.orderId.toString().padEnd(8)}│\n`;
-  msg += `│  от ${dateStr} ${timeStr}       │\n`;
-  msg += `└─────────────────────────────┘\n\n`;
-
+   
   msg += `� *Товары:*\n`;
   msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   
@@ -439,11 +439,7 @@ async function sendOrderNotificationToClient(telegram_id, order) {
     msg += `    ${qty} шт × ${product.price.toLocaleString('ru-RU')} ₸ = <b>${itemTotal.toLocaleString('ru-RU')} ₸</b>\n\n`;
     itemNumber++;
   }
-
   msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `Всего наименований: ${Object.keys(order.items).length}\n`;
-  msg += `Всего товаров: ${totalItems} шт\n\n`;
-  
   msg += `<b>💰 ИТОГО: ${order.total.toLocaleString('ru-RU')} ₸</b>\n\n`;
   
   msg += `<b>👤 Данные покупателя:</b>\n`;
