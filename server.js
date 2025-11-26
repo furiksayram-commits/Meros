@@ -341,6 +341,22 @@ app.use((req, res, next) => {
 });
 
 // --- Уведомление в Telegram ---
+// Функция для получения названия товара по ID из БД
+function getProductNameFromDB(id) {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT name FROM products WHERE id = ?', [id], (err, row) => {
+      if (err) {
+        console.error('Ошибка получения товара:', err);
+        resolve(`Товар #${id}`);
+      } else if (row) {
+        resolve(row.name);
+      } else {
+        resolve(`Товар #${id}`);
+      }
+    });
+  });
+}
+
 async function sendOrderToTelegram(order) {
   if (!ADMIN_CHAT_ID || !process.env.BOT_TOKEN) return;
 
@@ -353,9 +369,11 @@ async function sendOrderToTelegram(order) {
   }
   
   msg += `\n🛒 *Товары:*\n`;
+  
+  // Получаем названия товаров из БД
   for (const id in order.items) {
-    const product = getProductName(parseInt(id));
-    msg += `• ${product} × ${order.items[id]}\n`;
+    const productName = await getProductNameFromDB(parseInt(id));
+    msg += `• ${productName} × ${order.items[id]}\n`;
   }
 
   msg += `\n💰 *Итого:* ${order.total.toLocaleString('ru-RU')} ₸`;
@@ -374,45 +392,83 @@ async function sendOrderToTelegram(order) {
   }
 }
 
-// Функция отправки уведомления клиенту
+// Функция отправки уведомления клиенту в виде чека
 async function sendOrderNotificationToClient(telegram_id, order) {
   if (!telegram_id || !process.env.BOT_TOKEN) return;
 
-  let msg = `✅ *Ваш заказ принят!*\n\n`;
-  msg += `📦 *Номер заказа:* #${order.orderId}\n`;
-  msg += `👤 *Имя:* ${order.name}\n`;
-  msg += `📞 *Телефон:* ${order.phone}\n`;
-  msg += `🏠 *Адрес:* ${order.address || 'Самовывоз'}\n\n`;
+  // Получаем текущую дату и время
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ru-RU');
+  const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+  // Формируем чек
+  let msg = `╔═══════════════════════════╗\n`;
+  msg += `║     " М Е Р О С "        ║\n`;
+  msg += `║   Телефон: +7 702 913 13 39  ║\n`;
+  msg += `╚═══════════════════════════╝\n\n`;
   
-  msg += `🛒 *Ваш заказ:*\n`;
+  msg += `┌─────────────────────────────┐\n`;
+  msg += `│  ЧЕК НА ПРОДАЖУ № ${order.orderId.toString().padEnd(8)}│\n`;
+  msg += `│  от ${dateStr} ${timeStr}       │\n`;
+  msg += `└─────────────────────────────┘\n\n`;
+
+  msg += `� *Товары:*\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  
+  let itemNumber = 1;
+  let totalItems = 0;
+  
+  // Получаем информацию о товарах из БД
   for (const id in order.items) {
-    const product = getProductName(parseInt(id));
-    msg += `• ${product} × ${order.items[id]}\n`;
+    const qty = order.items[id];
+    totalItems += qty;
+    
+    // Получаем полную информацию о товаре
+    const product = await new Promise((resolve) => {
+      db.get('SELECT name, price FROM products WHERE id = ?', [parseInt(id)], (err, row) => {
+        if (err || !row) {
+          resolve({ name: `Товар #${id}`, price: 0 });
+        } else {
+          resolve(row);
+        }
+      });
+    });
+    
+    const itemTotal = product.price * qty;
+    msg += `<b>${itemNumber}.</b> ${product.name}\n`;
+    msg += `    ${qty} шт × ${product.price.toLocaleString('ru-RU')} ₸ = <b>${itemTotal.toLocaleString('ru-RU')} ₸</b>\n\n`;
+    itemNumber++;
   }
 
-  msg += `\n💰 *Итого к оплате:* ${order.total.toLocaleString('ru-RU')} ₸\n\n`;
-  msg += `⏰ Наш менеджер свяжется с вами в ближайшее время для подтверждения заказа.\n\n`;
-  msg += `Спасибо за покупку! 🙏`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `Всего наименований: ${Object.keys(order.items).length}\n`;
+  msg += `Всего товаров: ${totalItems} шт\n\n`;
+  
+  msg += `<b>💰 ИТОГО: ${order.total.toLocaleString('ru-RU')} ₸</b>\n\n`;
+  
+  msg += `<b>👤 Данные покупателя:</b>\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `<b>Имя:</b> ${order.name}\n`;
+  msg += `<b>Телефон:</b> ${order.phone}\n`;
+  if (order.address) {
+    msg += `<b>Адрес:</b> ${order.address}\n`;
+  }
+  
+  msg += `\n<b>✅ Заказ успешно оформлен!</b>\n`;
+  msg += `⏰ Наш менеджер свяжется с вами\n`;
+  msg += `   в ближайшее время.\n\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `<b>     СПАСИБО ЗА ПОКУПКУ! 🙏</b>`;
 
   try {
-    await bot.sendMessage(telegram_id, msg, { parse_mode: 'Markdown' });
-    console.log(`✅ Уведомление о заказе отправлено клиенту (ID: ${telegram_id})`);
+    await bot.sendMessage(telegram_id, msg, { parse_mode: 'HTML' });
+    console.log(`✅ Чек отправлен клиенту (ID: ${telegram_id})`);
   } catch (err) {
-    console.error('Ошибка отправки уведомления клиенту:', err);
+    console.error('Ошибка отправки чека клиенту:', err);
   }
 }
 
 // Функция для получения названия товара по ID
-function getProductName(id) {
-  const products = {
-    1: 'Цемент Шымкент 450',
-    2: 'Цемент Шымкент 500', 
-    3: 'Цемент Стандарт 450',
-    4: 'Цемент Аккерман 500'
-  };
-  return products[id] || `Товар #${id}`;
-}
-
 // --- API: CATEGORIES (CRUD) ---
 
 // Получить все категории
