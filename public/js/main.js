@@ -201,11 +201,15 @@ async function loadProducts(categoryId = null) {
     if (!response.ok) throw new Error('Ошибка загрузки товаров');
     PRODUCTS = await response.json();
     
-    // Перемешиваем товары случайным образом (Fisher-Yates shuffle)
-    for (let i = PRODUCTS.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [PRODUCTS[i], PRODUCTS[j]] = [PRODUCTS[j], PRODUCTS[i]];
+    // Перемешиваем товары только если показываем все категории
+    if (!categoryId) {
+      // Fisher-Yates shuffle для всех товаров
+      for (let i = PRODUCTS.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [PRODUCTS[i], PRODUCTS[j]] = [PRODUCTS[j], PRODUCTS[i]];
+      }
     }
+    // Если выбрана конкретная категория - товары остаются по порядку
     
     renderProducts(PRODUCTS);
   } catch (error) {
