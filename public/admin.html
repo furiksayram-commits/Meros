@@ -281,6 +281,18 @@
                 <div class="stat-number" id="avg-order">0 ₸</div>
                 <div class="muted">Средний чек</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-visits">0</div>
+                <div class="muted">Всего посещений</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="today-visits">0</div>
+                <div class="muted">Сегодня</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="unique-visitors">0</div>
+                <div class="muted">Уникальные IP</div>
+            </div>
         </div>
 
         <!-- Действия администратора -->
@@ -664,6 +676,23 @@
             document.getElementById('total-revenue').textContent = totalRevenue.toLocaleString('ru-RU') + ' ₸';
             document.getElementById('new-orders').textContent = newOrders;
             document.getElementById('avg-order').textContent = avgOrder.toLocaleString('ru-RU') + ' ₸';
+            
+            // Загрузка статистики посещений
+            loadVisitStats();
+        }
+
+        // Загрузка статистики посещений
+        async function loadVisitStats() {
+            try {
+                const response = await fetch('/api/stats/visits');
+                const stats = await response.json();
+                
+                document.getElementById('total-visits').textContent = stats.total.toLocaleString('ru-RU');
+                document.getElementById('today-visits').textContent = stats.today.toLocaleString('ru-RU');
+                document.getElementById('unique-visitors').textContent = stats.unique_ips.toLocaleString('ru-RU');
+            } catch (error) {
+                console.error('Ошибка загрузки статистики посещений:', error);
+            }
         }
 
         // Вспомогательные функции

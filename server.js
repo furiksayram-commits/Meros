@@ -127,6 +127,14 @@ if(!dbExists){
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`);
     
+    db.run(`CREATE TABLE visits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ip_address TEXT,
+      user_agent TEXT,
+      referrer TEXT,
+      visited_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`);
+    
     // Добавляем начальные категории
     const initialCategories = [
       ['ЦЕМЕНТ', null, '📦', 1],
@@ -312,6 +320,25 @@ const uploadExcel = multer({
 
 // ✅ ИСПРАВЛЕНО: serve frontend from current directory
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Middleware для отслеживания посещений
+app.use((req, res, next) => {
+  // Отслеживаем только главную страницу и страницы товаров, пропускаем API и статику
+  if (req.path === '/' || req.path === '/index.html') {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const referrer = req.headers['referer'] || req.headers['referrer'] || 'direct';
+    
+    db.run(
+      'INSERT INTO visits (ip_address, user_agent, referrer) VALUES (?, ?, ?)',
+      [ip, userAgent, referrer],
+      (err) => {
+        if (err) console.error('Error logging visit:', err);
+      }
+    );
+  }
+  next();
+});
 
 // --- Уведомление в Telegram ---
 async function sendOrderToTelegram(order) {
@@ -790,6 +817,38 @@ app.get('/api/user/orders/:telegram_id', (req, res) => {
   `, [telegram_id], (err, rows) => {
     if (err) return res.status(500).json({ error: 'Database error' });
     res.json(rows.map(r => ({...r, items: JSON.parse(r.items || '{}')})));
+  });
+});
+
+// --- API: статистика посещений ---
+app.get('/api/stats/visits', (req, res) => {
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Общее количество посещений
+  db.get('SELECT COUNT(*) as total FROM visits', [], (err1, totalRow) => {
+    if (err1) return res.status(500).send('db error');
+    
+    // Посещения сегодня
+    db.get('SELECT COUNT(*) as today FROM visits WHERE DATE(visited_at) = ?', [today], (err2, todayRow) => {
+      if (err2) return res.status(500).send('db error');
+      
+      // Уникальные IP
+      db.get('SELECT COUNT(DISTINCT ip_address) as unique_ips FROM visits', [], (err3, uniqueRow) => {
+        if (err3) return res.status(500).send('db error');
+        
+        // Последние 10 посещений
+        db.all('SELECT ip_address, user_agent, referrer, visited_at FROM visits ORDER BY visited_at DESC LIMIT 10', [], (err4, recent) => {
+          if (err4) return res.status(500).send('db error');
+          
+          res.json({
+            total: totalRow.total,
+            today: todayRow.today,
+            unique_ips: uniqueRow.unique_ips,
+            recent: recent
+          });
+        });
+      });
+    });
   });
 });
 
