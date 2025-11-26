@@ -366,7 +366,15 @@ async function sendOrderToTelegram(order) {
   if (!ADMIN_CHAT_ID || !process.env.BOT_TOKEN) return;
 
   let msg = `🧾 *Новый заказ с сайта*\n\n`;
-  msg += `👤 *Имя:* ${escapeMarkdown(order.name)}\n📞 *Телефон:* ${order.phone}\n🏠 *Адрес:* ${escapeMarkdown(order.address || '-')}\n`;
+  
+  // Если клиент авторизован через Telegram, делаем имя ссылкой
+  if (order.telegram_id) {
+    msg += `👤 *Имя:* [${escapeMarkdown(order.name)}](tg://user?id=${order.telegram_id})\n`;
+  } else {
+    msg += `👤 *Имя:* ${escapeMarkdown(order.name)}\n`;
+  }
+  
+  msg += `📞 *Телефон:* ${order.phone}\n🏠 *Адрес:* ${escapeMarkdown(order.address || '-')}\n`;
   
   // Добавляем координаты если есть
   if (order.location && order.location.lat && order.location.lon) {
@@ -809,7 +817,7 @@ function insertOrder(name, phone, address, items, total, location, userId, res, 
     }
 
     // 📩 Отправляем заказ в Telegram админу
-    await sendOrderToTelegram({ name, phone, address, items, total, location });
+    await sendOrderToTelegram({ name, phone, address, items, total, location, telegram_id });
 
     // 📱 Отправляем уведомление клиенту, если он авторизован
     if (telegram_id) {

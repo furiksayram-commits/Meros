@@ -319,12 +319,75 @@ function changePage(page) {
   document.getElementById('products').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Переменная для хранения ID товара при выборе количества
+let selectedProductId = null;
+
+// Открыть модальное окно выбора количества
+function openQuantityModal(id) {
+  selectedProductId = id;
+  const product = PRODUCTS.find(p => p.id === id);
+  
+  if (!product) return;
+  
+  // Заполняем информацию о товаре
+  document.getElementById('quantity-product-image').src = product.image || product.img || '/assets/pch.webp';
+  document.getElementById('quantity-product-name').textContent = product.name;
+  document.getElementById('quantity-product-price').textContent = product.price.toLocaleString('ru-RU') + ' ₸';
+  
+  // Сбрасываем количество на 1
+  const quantityInput = document.getElementById('quantity-input');
+  quantityInput.value = 1;
+  
+  // Показываем модальное окно
+  document.getElementById('quantity-modal').style.display = 'grid';
+  
+  // Автоматически фокусируемся на поле ввода и выделяем текст
+  setTimeout(() => {
+    quantityInput.focus();
+    quantityInput.select();
+  }, 100);
+}
+
+// Закрыть модальное окно выбора количества
+function closeQuantityModal() {
+  document.getElementById('quantity-modal').style.display = 'none';
+  selectedProductId = null;
+}
+
+// Увеличить количество
+function increaseQuantity() {
+  const input = document.getElementById('quantity-input');
+  input.value = parseInt(input.value) + 1;
+}
+
+// Уменьшить количество
+function decreaseQuantity() {
+  const input = document.getElementById('quantity-input');
+  if (parseInt(input.value) > 1) {
+    input.value = parseInt(input.value) - 1;
+  }
+}
+
+// Подтвердить добавление в корзину
+function confirmAddToCart() {
+  if (!selectedProductId) return;
+  
+  const quantity = parseInt(document.getElementById('quantity-input').value);
+  
+  if (quantity > 0) {
+    cart[selectedProductId] = (cart[selectedProductId] || 0) + quantity;
+    saveCart(); 
+    updateCartCount();
+    flashCartCount();
+    showToastNotification(`Добавлено ${quantity} шт. в корзину!`);
+  }
+  
+  closeQuantityModal();
+}
+
 function addToCart(id){ 
-  cart[id] = (cart[id]||0)+1; 
-  saveCart(); 
-  updateCartCount();
-  flashCartCount();
-  showToastNotification('Товар добавлен в корзину!');
+  // Открываем модальное окно выбора количества вместо прямого добавления
+  openQuantityModal(id);
 }
 
 function removeFromCart(id){ 
