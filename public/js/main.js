@@ -458,7 +458,6 @@ function renderCart(){
   }
   
   document.getElementById('cart-total').textContent = total.toLocaleString('ru-RU') + ' ₸';
-  document.getElementById('cart-count').textContent = count;
   
   // Обработчики для кнопок +/-
   document.querySelectorAll('[data-action]').forEach(btn=>{
@@ -664,13 +663,17 @@ document.getElementById('place').addEventListener('click', async ()=>{
 
   const total = calculateTotal();
   
+  // Добавляем стоимость доставки к общей сумме, если есть геолокация
+  const totalWithDelivery = deliveryCost > 0 ? total + deliveryCost : total;
+  
   const orderData = {
     name: name,
     phone: phone,
     address: address,
     location: userLocation, // Добавляем координаты если есть
     items: {...cart},
-    total: total,
+    total: totalWithDelivery,
+    delivery_cost: deliveryCost, // Добавляем стоимость доставки
     telegram_id: currentUser?.id || null // Добавляем telegram_id если пользователь авторизован
   };
 
@@ -741,7 +744,7 @@ document.getElementById('place').addEventListener('click', async ()=>{
     }
 
     // Сумма прописью (упрощенная версия)
-    const totalInWords = numberToWords(total);
+    const totalInWords = numberToWords(totalWithDelivery);
 
     receiptHTML += `
         </div>
@@ -753,9 +756,26 @@ document.getElementById('place').addEventListener('click', async ()=>{
 
         <!-- Итого сумма -->
         <div style="border-top: 1px solid #000; padding-top: 10px; margin-bottom: 5px;">
+    `;
+    
+    // Показываем подытог товаров, если есть доставка
+    if (deliveryCost > 0) {
+      receiptHTML += `
+          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px;">
+            <span>Товары:</span>
+            <span>${total.toLocaleString('ru-RU')} ₸</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+            <span>Доставка:</span>
+            <span>${deliveryCost.toLocaleString('ru-RU')} ₸</span>
+          </div>
+      `;
+    }
+    
+    receiptHTML += `
           <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: bold;">
             <span>ИТОГО:</span>
-            <span>${total.toLocaleString('ru-RU')} ₸</span>
+            <span>${totalWithDelivery.toLocaleString('ru-RU')} ₸</span>
           </div>
         </div>
 
@@ -929,6 +949,82 @@ function calculateTotal(){
 
 // Геолокация
 let userLocation = null;
+let deliveryCost = 0;
+
+// Координаты магазина "Мерос" в Шымкенте
+const STORE_LOCATION = {
+  lat: 42.311041,
+  lon: 69.78032
+};
+
+// Функция расчета расстояния между двумя точками (формула Haversine)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Радиус Земли в км
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  return distance;
+}
+
+// Функция расчета стоимости доставки
+function calculateDeliveryCost(distance) {
+  // 10 ₸ за км, минимум 100 ₸
+  const cost = Math.max(100, Math.ceil(distance * 10));
+  return cost;
+}
+
+// Выбор типа доставки
+function selectDeliveryOption(type) {
+  const deliveryBtn = document.getElementById('delivery-option');
+  const pickupBtn = document.getElementById('pickup-option');
+  const deliverySection = document.getElementById('delivery-section');
+  const pickupSection = document.getElementById('pickup-section');
+  
+  if (type === 'delivery') {
+    // Активировать доставку
+    deliveryBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    deliveryBtn.style.color = 'white';
+    deliveryBtn.style.border = 'none';
+    
+    pickupBtn.style.background = 'white';
+    pickupBtn.style.color = '#333';
+    pickupBtn.style.border = '2px solid #ddd';
+    
+    deliverySection.style.display = 'block';
+    pickupSection.style.display = 'none';
+    
+    // Если есть геолокация, восстановить стоимость доставки
+    if (userLocation) {
+      const distance = calculateDistance(
+        userLocation.lat, 
+        userLocation.lon, 
+        STORE_LOCATION.lat, 
+        STORE_LOCATION.lon
+      );
+      deliveryCost = calculateDeliveryCost(distance);
+    }
+  } else if (type === 'pickup') {
+    // Активировать самовывоз
+    pickupBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    pickupBtn.style.color = 'white';
+    pickupBtn.style.border = 'none';
+    
+    deliveryBtn.style.background = 'white';
+    deliveryBtn.style.color = '#333';
+    deliveryBtn.style.border = '2px solid #ddd';
+    
+    deliverySection.style.display = 'none';
+    pickupSection.style.display = 'block';
+    
+    // Обнулить стоимость доставки для самовывоза
+    deliveryCost = 0;
+  }
+}
 
 document.getElementById('get-location').addEventListener('click', function(e) {
   e.preventDefault();
@@ -955,8 +1051,24 @@ document.getElementById('get-location').addEventListener('click', function(e) {
       
       userLocation = { lat, lon };
       
-      // Показываем координаты
+      // Рассчитываем расстояние от магазина
+      const distance = calculateDistance(STORE_LOCATION.lat, STORE_LOCATION.lon, lat, lon);
+      deliveryCost = calculateDeliveryCost(distance);
+      
+      // Показываем координаты и информацию о доставке
       coordinatesSpan.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+      
+      // Добавляем информацию о доставке
+      const deliveryInfo = document.getElementById('delivery-info');
+      if (deliveryInfo) {
+        deliveryInfo.innerHTML = `
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #10b981;">
+            <div style="font-weight: 500; color: #065f46;">📦 Доставка: ${distance.toFixed(1)} км</div>
+            <div style="font-size: 16px; font-weight: bold; color: #059669; margin-top: 3px;">Стоимость: ${deliveryCost.toLocaleString('ru-RU')} ₸</div>
+          </div>
+        `;
+      }
+      
       locationInfo.style.display = 'block';
       
       // Ссылка на Google Maps

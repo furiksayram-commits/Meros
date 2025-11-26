@@ -71,16 +71,18 @@ button, .btn{background:#10b981;color:#fff;border:0;padding:8px 12px;border-radi
   background: var(--card);
   box-shadow: -4px 0 20px rgba(0,0,0,0.2);
   padding: 16px;
-  overflow-y: auto;
   z-index: 1001;
   display: none;
   transition: transform 0.3s ease;
   transform: translateX(100%);
+  display: flex;
+  flex-direction: column;
 }
 
 .cart[style*="display: block"],
 .cart[style*="display:block"] {
   transform: translateX(0);
+  display: flex;
 }
 
 .cart-header {
