@@ -1181,7 +1181,7 @@ function showToastNotification(message) {
   // Удаляем через 2 секунды
   setTimeout(() => {
     toast.remove();
-  }, 2000);
+  }, 1000);
 }
 
 // Инициализация при загрузке страницы

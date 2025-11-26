@@ -374,6 +374,34 @@ async function sendOrderToTelegram(order) {
   }
 }
 
+// Функция отправки уведомления клиенту
+async function sendOrderNotificationToClient(telegram_id, order) {
+  if (!telegram_id || !process.env.BOT_TOKEN) return;
+
+  let msg = `✅ *Ваш заказ принят!*\n\n`;
+  msg += `📦 *Номер заказа:* #${order.orderId}\n`;
+  msg += `👤 *Имя:* ${order.name}\n`;
+  msg += `📞 *Телефон:* ${order.phone}\n`;
+  msg += `🏠 *Адрес:* ${order.address || 'Самовывоз'}\n\n`;
+  
+  msg += `🛒 *Ваш заказ:*\n`;
+  for (const id in order.items) {
+    const product = getProductName(parseInt(id));
+    msg += `• ${product} × ${order.items[id]}\n`;
+  }
+
+  msg += `\n💰 *Итого к оплате:* ${order.total.toLocaleString('ru-RU')} ₸\n\n`;
+  msg += `⏰ Наш менеджер свяжется с вами в ближайшее время для подтверждения заказа.\n\n`;
+  msg += `Спасибо за покупку! 🙏`;
+
+  try {
+    await bot.sendMessage(telegram_id, msg, { parse_mode: 'Markdown' });
+    console.log(`✅ Уведомление о заказе отправлено клиенту (ID: ${telegram_id})`);
+  } catch (err) {
+    console.error('Ошибка отправки уведомления клиенту:', err);
+  }
+}
+
 // Функция для получения названия товара по ID
 function getProductName(id) {
   const products = {
@@ -704,20 +732,22 @@ app.post('/api/orders', (req, res) => {
   if (telegram_id) {
     db.get('SELECT id FROM users WHERE telegram_id = ?', [telegram_id], (err, user) => {
       const userId = user ? user.id : null;
-      insertOrder(name, phone, address, items, total, location, userId, res);
+      insertOrder(name, phone, address, items, total, location, userId, res, telegram_id);
     });
   } else {
-    insertOrder(name, phone, address, items, total, location, null, res);
+    insertOrder(name, phone, address, items, total, location, null, res, null);
   }
 });
 
-function insertOrder(name, phone, address, items, total, location, userId, res) {
+function insertOrder(name, phone, address, items, total, location, userId, res, telegram_id) {
   const stmt = db.prepare(`INSERT INTO orders (name,phone,address,items,total,user_id) VALUES (?,?,?,?,?,?)`);
   stmt.run(name, phone, address || '', JSON.stringify(items||{}), total || 0, userId, async function(err){
     if(err) {
       console.error(err);
       return res.status(500).send('db error');
     }
+
+    const orderId = this.lastID;
 
     // Если пользователь авторизован, обновляем его контактные данные
     if (userId && phone) {
@@ -726,10 +756,22 @@ function insertOrder(name, phone, address, items, total, location, userId, res) 
       });
     }
 
-    // 📩 Отправляем заказ в Telegram с координатами
+    // 📩 Отправляем заказ в Telegram админу
     await sendOrderToTelegram({ name, phone, address, items, total, location });
 
-    res.json({ id: this.lastID });
+    // 📱 Отправляем уведомление клиенту, если он авторизован
+    if (telegram_id) {
+      await sendOrderNotificationToClient(telegram_id, { 
+        orderId, 
+        name, 
+        phone, 
+        address, 
+        items, 
+        total 
+      });
+    }
+
+    res.json({ id: orderId });
   });
 }
 
