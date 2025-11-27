@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>МЕРОС Строймаркет</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=ec23a9ed-deb7-4280-b105-1c8ae9e7543f&lang=ru_RU" type="text/javascript"></script>
 </head>
 <body>
   <header>
@@ -155,7 +156,8 @@
       <div id="delivery-section" style="margin-bottom: 15px;">
         <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: #374151;">🏠 Адрес доставки</label>
         <div style="position: relative;">
-          <input id="address" placeholder="Улица, дом, квартира" style="width: 100%; padding: 12px 45px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
+          <input id="address" placeholder="Улица, дом, квартира" autocomplete="off" style="width: 100%; padding: 12px 45px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
+          <div id="address-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 40px; background: white; border: 2px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
           <button id="get-location" class="btn-location" title="Получить мою геолокацию" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #10b981; color: white; width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s;"></button>
         </div>
       </div>
@@ -168,8 +170,8 @@
           <div>
             <div style="font-weight: 600; color: #92400e; margin-bottom: 5px;">Адрес магазина:</div>
             <div style="font-size: 14px; color: #78350f; margin-bottom: 5px;">г. Шымкент, ул. Байтурсынова</div>
-            <a href="https://www.google.com/maps?ll=42.311041,69.78032&z=18&t=m&hl=ru&gl=KZ&mapclient=embed&cid=17130223352874182266" target="_blank" style="color: #d97706; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
-              📍 Открыть на карте
+            <a href="https://yandex.ru/maps/?ll=69.78032,42.311041&z=16&pt=69.78032,42.311041,pm2rdm" target="_blank" style="color: #d97706; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+              📍 Открыть в Яндекс Картах
             </a>
           </div>
         </div>
@@ -183,7 +185,7 @@
           <strong style="color: #065f46;">Координаты:</strong> <span id="coordinates"></span>
         </div>
         <a id="map-link" href="#" target="_blank" style="color: #059669; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
-          📍 Открыть на карте
+          📍 Открыть в Яндекс Картах
         </a>
         <div id="delivery-info"></div>
       </div>
@@ -298,23 +300,22 @@
           Режим работы: Пн-Вс, 9:00 - 18:00
         </p>
         
-        <!-- Интерактивная карта Google Maps -->
+        <!-- Интерактивная карта Яндекс -->
         <div style="border-radius: 8px; overflow: hidden; height: 300px; margin-top: 15px;">
           <iframe 
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d737.6192416022224!2d69.77974083956626!3d42.31102976196682!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x38a8e7269dba7123%3A0xedbac7612f2aa67a!2z0JzQtdGA0L7RgQ!5e0!3m2!1sru!2skz!4v1764084244422!5m2!1sru!2skz" 
+            src="https://yandex.ru/map-widget/v1/?ll=69.78032%2C42.311041&z=16&l=map&pt=69.78032,42.311041,pm2rdm" 
             width="100%" 
             height="300" 
             style="border:0;" 
             allowfullscreen="" 
-            loading="lazy" 
-            referrerpolicy="no-referrer-when-downgrade">
+            loading="lazy">
           </iframe>
         </div>
         
-        <a href="https://www.google.com/maps?ll=42.311041,69.78032&z=18&t=m&hl=ru&gl=KZ&mapclient=embed&cid=17130223352874182266" 
+        <a href="https://yandex.ru/maps/?ll=69.78032,42.311041&z=16&pt=69.78032,42.311041,pm2rdm" 
            target="_blank" 
            style="display: block; text-align: center; margin-top: 10px; color: var(--accent); text-decoration: none; font-size: 14px;">
-          📱 Открыть в Google Maps
+          📱 Открыть в Яндекс Картах
         </a>
       </div>
       

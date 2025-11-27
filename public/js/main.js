@@ -973,9 +973,21 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 // Функция расчета стоимости доставки
 function calculateDeliveryCost(distance) {
-  // 10 ₸ за км, минимум 100 ₸
-  const cost = Math.max(100, Math.ceil(distance * 10));
-  return cost;
+  // Новый алгоритм расчета:
+  // < 2 км = 1000 ₸
+  // 2-2.5 км = 1500 ₸
+  // 2.5-3 км = 2000 ₸
+  // > 3 км = расстояние * 1000 ₸
+  
+  if (distance < 2) {
+    return 1000;
+  } else if (distance >= 2 && distance < 2.5) {
+    return 1500;
+  } else if (distance >= 2.5 && distance < 3) {
+    return 2000;
+  } else {
+    return Math.ceil(distance * 1000);
+  }
 }
 
 // Выбор типа доставки
@@ -1032,6 +1044,134 @@ function selectDeliveryOption(type) {
   }
 }
 
+// Yandex Maps автодополнение адресов
+function initYandexSuggest() {
+  ymaps.ready(function() {
+    const addressInput = document.getElementById('address');
+    const suggestionsDiv = document.getElementById('address-suggestions');
+    
+    let searchTimeout;
+    
+    addressInput.addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      const query = this.value.trim();
+      
+      if (query.length < 3) {
+        suggestionsDiv.style.display = 'none';
+        return;
+      }
+      
+      searchTimeout = setTimeout(() => {
+        // Используем geocode для поиска адресов
+        ymaps.geocode('Шымкент, ' + query, {
+          results: 5,
+          boundedBy: [[42.2, 69.6], [42.4, 69.9]], // Границы Шымкента
+          strictBounds: false
+        }).then(function(res) {
+          const items = [];
+          res.geoObjects.each(function(obj) {
+            items.push({
+              displayName: obj.properties.get('text'),
+              coords: obj.geometry.getCoordinates(),
+              description: obj.properties.get('name')
+            });
+          });
+          showSuggestions(items);
+        }).catch(function(err) {
+          console.error('Geocode error:', err);
+        });
+      }, 300);
+    });
+    
+    function showSuggestions(items) {
+      if (!items || items.length === 0) {
+        suggestionsDiv.style.display = 'none';
+        return;
+      }
+      
+      suggestionsDiv.innerHTML = '';
+      items.forEach(function(item) {
+        const div = document.createElement('div');
+        div.style.cssText = 'padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background 0.2s;';
+        
+        // Убираем "Казахстан, " из адреса для компактности
+        let displayText = item.displayName.replace('Казахстан, ', '');
+        div.textContent = displayText;
+        
+        div.addEventListener('mouseenter', function() {
+          this.style.background = '#f9fafb';
+        });
+        
+        div.addEventListener('mouseleave', function() {
+          this.style.background = 'white';
+        });
+        
+        div.addEventListener('click', function() {
+          // Убираем префикс "Шымкент, " если есть
+          let cleanAddress = displayText.replace('Шымкент, ', '');
+          addressInput.value = cleanAddress;
+          suggestionsDiv.style.display = 'none';
+          
+          // Сохраняем координаты и рассчитываем доставку
+          userLocation = {
+            lat: item.coords[0],
+            lon: item.coords[1]
+          };
+          
+          const distance = calculateDistance(
+            userLocation.lat,
+            userLocation.lon,
+            STORE_LOCATION.lat,
+            STORE_LOCATION.lon
+          );
+          
+          deliveryCost = calculateDeliveryCost(distance);
+          
+          // Показываем информацию о доставке
+          const locationInfo = document.getElementById('location-info');
+          const coordinatesSpan = document.getElementById('coordinates');
+          const mapLink = document.getElementById('map-link');
+          const deliveryInfo = document.getElementById('delivery-info');
+          
+          coordinatesSpan.textContent = item.coords[0].toFixed(6) + ', ' + item.coords[1].toFixed(6);
+          mapLink.href = `https://yandex.ru/maps/?ll=${item.coords[1]},${item.coords[0]}&z=16&pt=${item.coords[1]},${item.coords[0]},pm2rdm`;
+          
+          deliveryInfo.innerHTML = `
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #10b981;">
+              <strong style="color: #065f46;">Расстояние:</strong> ${distance.toFixed(2)} км<br>
+              <strong style="color: #065f46;">Стоимость доставки:</strong> ${deliveryCost} ₸
+            </div>
+          `;
+          
+          locationInfo.style.display = 'block';
+        });
+        
+        suggestionsDiv.appendChild(div);
+      });
+      
+      suggestionsDiv.style.display = 'block';
+    }
+    
+    // Скрыть подсказки при клике вне поля
+    document.addEventListener('click', function(e) {
+      if (e.target !== addressInput && !suggestionsDiv.contains(e.target)) {
+        suggestionsDiv.style.display = 'none';
+      }
+    });
+  });
+}
+
+// Инициализация при загрузке страницы
+if (typeof ymaps !== 'undefined') {
+  initYandexSuggest();
+} else {
+  window.addEventListener('load', function() {
+    if (typeof ymaps !== 'undefined') {
+      initYandexSuggest();
+    }
+  });
+}
+
 document.getElementById('get-location').addEventListener('click', function(e) {
   e.preventDefault();
   
@@ -1077,8 +1217,8 @@ document.getElementById('get-location').addEventListener('click', function(e) {
       
       locationInfo.style.display = 'block';
       
-      // Ссылка на Google Maps
-      mapLink.href = `https://www.google.com/maps?q=${lat},${lon}`;
+      // Ссылка на Яндекс Карты
+      mapLink.href = `https://yandex.ru/maps/?ll=${lon},${lat}&z=16&pt=${lon},${lat},pm2rdm`;
       
       // Пытаемся получить адрес через Nominatim (OpenStreetMap)
       try {
