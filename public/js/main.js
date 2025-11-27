@@ -974,19 +974,37 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 // Функция расчета стоимости доставки
 function calculateDeliveryCost(distance) {
   // Новый алгоритм расчета:
-  // < 2 км = 1000 ₸
+  // <2 км = 1000 ₸
   // 2-2.5 км = 1500 ₸
   // 2.5-3 км = 2000 ₸
-  // > 3 км = расстояние * 1000 ₸
-  
+  // 3-4 км = 3000 ₸
+  // 4-5 км = 4000 ₸
+  // 5-10 км = 5000 ₸
+  // 10-13 км = 6000 ₸
+  // 13-15 км = 7000 ₸
+  // 15-20 км = 8000 ₸
+  // >20 км = distance * 400 (округление до 100)
   if (distance < 2) {
     return 1000;
   } else if (distance >= 2 && distance < 2.5) {
     return 1500;
   } else if (distance >= 2.5 && distance < 3) {
     return 2000;
+  } else if (distance >= 3 && distance < 4) {
+    return 3000;
+  } else if (distance >= 4 && distance < 5) {
+    return 4000;
+  } else if (distance >= 5 && distance < 10) {
+    return 5000;
+  } else if (distance >= 10 && distance < 13) {
+    return 6000;
+  } else if (distance >= 13 && distance < 15) {
+    return 7000;
+  } else if (distance >= 15 && distance < 20) {
+    return 8000;
   } else {
-    return Math.ceil(distance * 1000);
+    // Остальное: расстояние * 400, округление до 100
+    return Math.ceil((distance * 400) / 100) * 100;
   }
 }
 
