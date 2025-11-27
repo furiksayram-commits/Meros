@@ -1300,6 +1300,32 @@ document.addEventListener('DOMContentLoaded', () => {
   const navItems = document.querySelectorAll('.bottom-nav .nav-item');
   const mobileCartCount = document.getElementById('mobile-cart-count');
   
+  // Динамическое появление кнопок очистки полей
+  const nameInput = document.getElementById('name');
+  const phoneInput = document.getElementById('phone');
+  const addressInput = document.getElementById('address');
+  const clearNameBtn = document.getElementById('clear-name');
+  const clearPhoneBtn = document.getElementById('clear-phone');
+  const clearAddressBtn = document.getElementById('clear-address');
+  
+  if (nameInput && clearNameBtn) {
+    nameInput.addEventListener('input', () => {
+      clearNameBtn.style.display = nameInput.value ? 'flex' : 'none';
+    });
+  }
+  
+  if (phoneInput && clearPhoneBtn) {
+    phoneInput.addEventListener('input', () => {
+      clearPhoneBtn.style.display = phoneInput.value ? 'flex' : 'none';
+    });
+  }
+  
+  if (addressInput && clearAddressBtn) {
+    addressInput.addEventListener('input', () => {
+      clearAddressBtn.style.display = addressInput.value ? 'flex' : 'none';
+    });
+  }
+  
   // Обработчики для кнопок навигации
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {

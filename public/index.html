@@ -199,8 +199,8 @@
         <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: #374151;">👤 ФИО</label>
         <div style="position: relative;">
           <input id="name" placeholder="Введите ваше имя" style="width: 100%; padding: 12px 45px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
-          <button onclick="document.getElementById('name').value=''" class="btn-clear-field" title="Очистить" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; color: #ef4444; width: 32px; height: 32px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button id="clear-name" onclick="document.getElementById('name').value=''; this.style.display='none';" class="btn-clear-field" title="Очистить" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: white; color: #ef4444; width: 32px; height: 32px; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.3s; border-radius: 50%;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -212,8 +212,8 @@
         <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: #374151;">📞 Телефон</label>
         <div style="position: relative;">
           <input id="phone" placeholder="+7 (___) ___-__-__" style="width: 100%; padding: 12px 90px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
-          <button onclick="document.getElementById('phone').value=''" class="btn-clear-field" title="Очистить" style="position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: transparent; color: #ef4444; width: 32px; height: 32px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button id="clear-phone" onclick="document.getElementById('phone').value=''; this.style.display='none';" class="btn-clear-field" title="Очистить" style="position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: white; color: #ef4444; width: 32px; height: 32px; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.3s; border-radius: 50%;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -254,8 +254,8 @@
         <div style="position: relative;">
           <input id="address" placeholder="Улица, дом, квартира" autocomplete="off" style="width: 100%; padding: 12px 90px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
           <div id="address-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 85px; background: white; border: 2px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
-          <button onclick="document.getElementById('address').value=''; document.getElementById('address-suggestions').style.display='none';" class="btn-clear-field" title="Очистить" style="position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: transparent; color: #ef4444; width: 32px; height: 32px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s; z-index: 1001;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button id="clear-address" onclick="document.getElementById('address').value=''; document.getElementById('address-suggestions').style.display='none'; this.style.display='none';" class="btn-clear-field" title="Очистить" style="position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: white; color: #ef4444; width: 32px; height: 32px; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.3s; z-index: 1001; border-radius: 50%;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>

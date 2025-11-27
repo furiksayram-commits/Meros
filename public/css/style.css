@@ -819,9 +819,11 @@ input[type="search"], input{width:100%;padding:10px;border-radius:8px;border:1px
 /* Clear Field Button */
 .btn-clear-field {
   color: #ef4444;
+  background: white;
 }
 
 .btn-clear-field:hover {
+  background: #fee2e2;
   color: #dc2626;
   transform: translateY(-50%) scale(1.1);
 }
