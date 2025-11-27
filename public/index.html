@@ -199,25 +199,15 @@
         <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: #374151;">👤 ФИО</label>
         <div style="position: relative;">
           <input id="name" placeholder="Введите ваше имя" style="width: 100%; padding: 12px 45px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
-          <button id="clear-name" onclick="document.getElementById('name').value=''; this.style.display='none';" class="btn-clear-field" title="Очистить" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: white; color: #ef4444; width: 32px; height: 32px; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.3s; border-radius: 50%;">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+          <button id="clear-name" class="btn-clear-input" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #9ca3af; color: white; width: 28px; height: 28px; border-radius: 50%; border: none; cursor: pointer; font-size: 16px; line-height: 1; transition: background 0.3s;">✕</button>
         </div>
       </div>
 
       <div style="margin-bottom: 15px;">
         <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: #374151;">📞 Телефон</label>
         <div style="position: relative;">
-          <input id="phone" placeholder="+7 (___) ___-__-__" style="width: 100%; padding: 12px 90px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
-          <button id="clear-phone" onclick="document.getElementById('phone').value=''; this.style.display='none';" class="btn-clear-field" title="Очистить" style="position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: white; color: #ef4444; width: 32px; height: 32px; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.3s; border-radius: 50%;">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+          <input id="phone" placeholder="+7 (___) ___-__-__" style="width: 100%; padding: 12px 80px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
+          <button id="clear-phone" class="btn-clear-input" style="display: none; position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: #9ca3af; color: white; width: 28px; height: 28px; border-radius: 50%; border: none; cursor: pointer; font-size: 16px; line-height: 1; transition: background 0.3s;">✕</button>
           <a href="https://t.me/MerosSayramBot?start=phone" target="_blank" class="btn-phone-help" title="Отправить номер через бота" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #0088cc; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: background 0.3s;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.764 8.318c-.132.591-.473.737-.96.459l-2.65-1.953-1.279 1.231c-.141.141-.26.26-.533.26l.19-2.697 4.898-4.425c.213-.19-.046-.295-.33-.105l-6.05 3.813-2.606-.814c-.567-.177-.578-.567.118-.841l10.184-3.925c.472-.177.885.113.732.841z"/>
@@ -252,14 +242,9 @@
       <div id="delivery-section" style="margin-bottom: 15px;">
         <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: #374151;">🏠 Адрес доставки</label>
         <div style="position: relative;">
-          <input id="address" placeholder="Улица, дом, квартира" autocomplete="off" style="width: 100%; padding: 12px 90px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
-          <div id="address-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 85px; background: white; border: 2px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
-          <button id="clear-address" onclick="document.getElementById('address').value=''; document.getElementById('address-suggestions').style.display='none'; this.style.display='none';" class="btn-clear-field" title="Очистить" style="position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: white; color: #ef4444; width: 32px; height: 32px; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; transition: all 0.3s; z-index: 1001; border-radius: 50%;">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+          <input id="address" placeholder="Улица, дом, квартира" autocomplete="off" style="width: 100%; padding: 12px 80px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
+          <div id="address-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 40px; background: white; border: 2px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
+          <button id="clear-address" class="btn-clear-input" style="display: none; position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: #9ca3af; color: white; width: 28px; height: 28px; border-radius: 50%; border: none; cursor: pointer; font-size: 16px; line-height: 1; transition: background 0.3s;">✕</button>
           <button id="get-location" class="btn-location" title="Получить мою геолокацию" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #10b981; color: white; width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s;"></button>
         </div>
       </div>
@@ -611,6 +596,60 @@
       // Синхронизируем оба чекбокса
       if (profileCheck) profileCheck.checked = isNoImg;
     }
+    
+    // Управление кнопками очистки полей
+    document.addEventListener('DOMContentLoaded', function() {
+      // Очистка поля ФИО
+      const nameInput = document.getElementById('name');
+      const clearNameBtn = document.getElementById('clear-name');
+      
+      if (nameInput && clearNameBtn) {
+        nameInput.addEventListener('input', function() {
+          clearNameBtn.style.display = this.value.trim() ? 'flex' : 'none';
+        });
+        clearNameBtn.addEventListener('click', function() {
+          nameInput.value = '';
+          this.style.display = 'none';
+          nameInput.focus();
+        });
+      }
+      
+      // Очистка поля Телефон
+      const phoneInput = document.getElementById('phone');
+      const clearPhoneBtn = document.getElementById('clear-phone');
+      
+      if (phoneInput && clearPhoneBtn) {
+        phoneInput.addEventListener('input', function() {
+          clearPhoneBtn.style.display = this.value.trim() ? 'flex' : 'none';
+        });
+        clearPhoneBtn.addEventListener('click', function() {
+          phoneInput.value = '';
+          this.style.display = 'none';
+          phoneInput.focus();
+        });
+      }
+      
+      // Очистка поля Адрес
+      const addressInput = document.getElementById('address');
+      const clearAddressBtn = document.getElementById('clear-address');
+      
+      if (addressInput && clearAddressBtn) {
+        addressInput.addEventListener('input', function() {
+          clearAddressBtn.style.display = this.value.trim() ? 'flex' : 'none';
+        });
+        clearAddressBtn.addEventListener('click', function() {
+          addressInput.value = '';
+          this.style.display = 'none';
+          addressInput.focus();
+          // Очищаем подсказки адресов
+          const suggestions = document.getElementById('address-suggestions');
+          if (suggestions) {
+            suggestions.style.display = 'none';
+            suggestions.innerHTML = '';
+          }
+        });
+      }
+    });
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
