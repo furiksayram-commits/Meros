@@ -295,8 +295,7 @@
       <div style="background: #f9fafb; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
         <h4 style="margin-top: 0; margin-bottom: 15px;">📍 Наш адрес</h4>
         <p style="font-size: 14px; margin: 0 0 15px 0; line-height: 1.6;">
-          Шымкент, ул. С. Сатыбалдиева, 43/1<br>
-          Казахстан<br>
+          Шымкент, ул. С. Сатыбалдиева, 43/1
           Режим работы: Пн-Вс, 9:00 - 18:00
         </p>
         
@@ -378,6 +377,16 @@
         <div id="profile-username" style="font-size: 14px; color: #6b7280;"></div>
       </div>
       
+      <div style="margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f9fafb; border-radius: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: 500; font-size: 14px; color: #374151;">Режим без картинок</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="profile-toggle-img-checkbox" onchange="toggleProfileImgMode()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      
       <button class="btn" onclick="showOrderHistoryFromProfile()" style="width: 100%; margin-bottom: 10px;">
         📦 История заказов
       </button>
@@ -415,14 +424,79 @@
       <div id="telegram-login-widget" style="display: flex; justify-content: center; margin: 20px 0;"></div>
       
       <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-        <button class="btn secondary" onclick="closeTelegramModal()" style="width: 100%;">
-          Продолжить без входа
+        <button class="btn" onclick="closeTelegramModal()" style="width: 100%; margin-bottom: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+          ✨ Продолжить без входа
         </button>
+        
+        <div style="margin-top: 15px; display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f9fafb; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-weight: 500; font-size: 14px; color: #374151;">Режим без картинок</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="login-toggle-img-checkbox" onchange="toggleLoginImgMode()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
     </div>
   </div>
 
   <script src="/js/main.js"></script>
+  <script>
+    // Показывать кнопку только на мобильных устройствах
+    function isMobile() {
+      return window.innerWidth <= 600;
+    }
+    function updateImgModeBtn() {
+      // Всегда показывать кнопку в профиле
+      const pbtn = document.getElementById('profile-toggle-img-mode');
+      if (pbtn) pbtn.style.display = 'block';
+    }
+    window.addEventListener('resize', updateImgModeBtn);
+    window.addEventListener('DOMContentLoaded', updateImgModeBtn);
+    // Переключение режима с плавающей кнопки
+    const toggleBtn = document.getElementById('toggle-img-mode');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function() {
+        document.body.classList.toggle('no-img-mode');
+        this.textContent = document.body.classList.contains('no-img-mode') ? 'С картинками' : 'Без картинок';
+        // Синхронизируем с профилем
+        const pbtn = document.getElementById('profile-toggle-img-mode');
+        if (pbtn) pbtn.textContent = this.textContent;
+      });
+    }
+    // Переключение из профиля
+    function toggleProfileImgMode() {
+      const profileCheck = document.getElementById('profile-toggle-img-checkbox');
+      const loginCheck = document.getElementById('login-toggle-img-checkbox');
+      const isNoImg = profileCheck.checked;
+      
+      if (isNoImg) {
+        document.body.classList.add('no-img-mode');
+      } else {
+        document.body.classList.remove('no-img-mode');
+      }
+      
+      // Синхронизируем оба чекбокса
+      if (loginCheck) loginCheck.checked = isNoImg;
+    }
+    
+    // Переключение из окна авторизации
+    function toggleLoginImgMode() {
+      const profileCheck = document.getElementById('profile-toggle-img-checkbox');
+      const loginCheck = document.getElementById('login-toggle-img-checkbox');
+      const isNoImg = loginCheck.checked;
+      
+      if (isNoImg) {
+        document.body.classList.add('no-img-mode');
+      } else {
+        document.body.classList.remove('no-img-mode');
+      }
+      
+      // Синхронизируем оба чекбокса
+      if (profileCheck) profileCheck.checked = isNoImg;
+    }
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 </body>
