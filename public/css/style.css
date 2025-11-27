@@ -815,3 +815,13 @@ input[type="search"], input{width:100%;padding:10px;border-radius:8px;border:1px
 .toggle-switch input:checked + .toggle-slider:before {
   transform: translateX(24px);
 }
+
+/* Clear Field Button */
+.btn-clear-field {
+  color: #ef4444;
+}
+
+.btn-clear-field:hover {
+  color: #dc2626;
+  transform: translateY(-50%) scale(1.1);
+}
