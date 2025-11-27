@@ -1021,6 +1021,12 @@ function selectDeliveryOption(type) {
     deliverySection.style.display = 'none';
     pickupSection.style.display = 'block';
     
+    // Скрыть блок с координатами при самовывозе
+    const locationInfo = document.getElementById('location-info');
+    if (locationInfo) {
+      locationInfo.style.display = 'none';
+    }
+    
     // Обнулить стоимость доставки для самовывоза
     deliveryCost = 0;
   }
