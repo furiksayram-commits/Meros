@@ -700,7 +700,7 @@ document.getElementById('place').addEventListener('click', async ()=>{
 
     // Показываем чек
     let receiptHTML = `
-      <div style="font-family: 'MS Sans Serif', Arial, sans-serif; max-width: 320px; margin: 0 auto; padding: 20px; background: white;">
+  <div style="font-family: 'MS Sans Serif', Arial, sans-serif; max-width: 320px; margin: 0 auto; padding: 20px; background: white;">
         <!-- Шапка -->
         <div style="text-align: center; margin-bottom: 20px;">
           <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">" МЕРОС "</div>
@@ -802,10 +802,19 @@ document.getElementById('place').addEventListener('click', async ()=>{
         </div>
 
         <!-- Кнопки -->
-        <div style="display: flex; gap: 10px; justify-content: center;">
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
           <button id="download-pdf" class="btn secondary">📥 Скачать PDF</button>
+          <button id="send-wa" class="btn secondary" style="background: #25D366; color: white;"><img src='https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg' alt='WA' style='height:18px;vertical-align:middle;margin-right:4px;'>Отправить WA</button>
           <button id="close-receipt" class="btn">Закрыть</button>
         </div>
+          <!-- Кнопки -->
+          <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <button id="download-pdf" class="btn secondary">📥 Скачать PDF</button>
+            <button id="send-wa" class="btn secondary" style="background: #25D366; color: white; display: flex; align-items: center; gap: 6px;">
+              <img src='https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg' alt='WA' style='height:18px;vertical-align:middle;margin-right:4px;'>Отправить WA
+            </button>
+            <button id="close-receipt" class="btn">Закрыть</button>
+          </div>
 
         <!-- Продавец -->
         <div style="text-align: center; font-size: 13px; margin-top: 20px; color: #666;">
@@ -815,16 +824,13 @@ document.getElementById('place').addEventListener('click', async ()=>{
     `;
 
     const receiptBox = document.createElement('div');
+
     receiptBox.className = 'receipt-modal';
     receiptBox.innerHTML = `<div class="receipt-card" id="receipt-card">${receiptHTML}</div>`;
     document.body.appendChild(receiptBox);
 
     document.getElementById('modal').style.display = 'none';
 
-    // Очищаем корзину
-    for (const k in cart) delete cart[k];
-    saveCart();
-    
     // Сбрасываем кнопку после успешного оформления
     placeBtn.disabled = false;
     placeBtn.textContent = originalText;
@@ -846,6 +852,49 @@ document.getElementById('place').addEventListener('click', async ()=>{
       };
       html2pdf().set(opt).from(element).save();
     });
+
+    document.getElementById('send-wa').addEventListener('click', ()=>{
+      // Формируем текст чека
+      let waText = `ЧЕК НА ПРОДАЖУ №${result.id}%0A`;
+      waText += `от ${dateStr} ${timeStr}%0A`;
+      waText += `------------------------%0A`;
+      let itemNum = 0;
+      for (const idStr in cart) {
+        const id = Number(idStr);
+        const qty = cart[id];
+        const p = PRODUCTS.find(x => x.id === id);
+        if (p) {
+          itemNum++;
+          waText += `${itemNum}) ${p.name} / ${qty} шт. x ${p.price.toLocaleString('ru-RU')} = ${(p.price*qty).toLocaleString('ru-RU')} ₸%0A`;
+        }
+      }
+      waText += `------------------------%0A`;
+      if (deliveryCost > 0) {
+        waText += `Товары: ${total.toLocaleString('ru-RU')} ₸%0A`;
+        waText += `Доставка: ${deliveryCost.toLocaleString('ru-RU')} ₸%0A`;
+      }
+      waText += `ИТОГО: ${totalWithDelivery.toLocaleString('ru-RU')} ₸%0A`;
+      waText += `(${totalInWords})%0A`;
+      waText += `Покупатель: ${name}%0A`;
+      waText += `Телефон: ${phone}%0A`;
+      if(address) waText += `Адрес доставки: ${address}%0A`;
+      waText += `Спасибо за покупку!`;
+
+      // Формируем ссылку на WhatsApp
+      let phoneClean = phone.replace(/\D/g, '');
+      if(phoneClean.startsWith('8')) phoneClean = '7' + phoneClean.slice(1);
+      if(phoneClean.length === 10) phoneClean = '7' + phoneClean;
+      if(phoneClean.length === 11 && phoneClean.startsWith('7')) {
+        const waUrl = `https://wa.me/${phoneClean}?text=${waText}`;
+        window.open(waUrl, '_blank');
+      } else {
+        alert('Некорректный номер для WhatsApp');
+      }
+    });
+
+    // Очищаем корзину после генерации receiptBox и навешивания обработчиков
+    for (const k in cart) delete cart[k];
+    saveCart();
 
   } catch (error) {
     console.error('Ошибка при оформлении заказа:', error);
