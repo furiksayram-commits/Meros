@@ -807,14 +807,6 @@ document.getElementById('place').addEventListener('click', async ()=>{
           <button id="send-wa" class="btn secondary" style="background: #25D366; color: white;"><img src='https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg' alt='WA' style='height:18px;vertical-align:middle;margin-right:4px;'>Отправить WA</button>
           <button id="close-receipt" class="btn">Закрыть</button>
         </div>
-          <!-- Кнопки -->
-          <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-            <button id="download-pdf" class="btn secondary">📥 Скачать PDF</button>
-            <button id="send-wa" class="btn secondary" style="background: #25D366; color: white; display: flex; align-items: center; gap: 6px;">
-              <img src='https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg' alt='WA' style='height:18px;vertical-align:middle;margin-right:4px;'>Отправить WA
-            </button>
-            <button id="close-receipt" class="btn">Закрыть</button>
-          </div>
 
         <!-- Продавец -->
         <div style="text-align: center; font-size: 13px; margin-top: 20px; color: #666;">
