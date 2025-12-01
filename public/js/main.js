@@ -823,6 +823,9 @@ document.getElementById('place').addEventListener('click', async ()=>{
 
     document.getElementById('modal').style.display = 'none';
 
+    // Сохраняем данные корзины перед очисткой для отправки в WhatsApp
+    const cartSnapshot = JSON.parse(JSON.stringify(cart));
+
     // Сбрасываем кнопку после успешного оформления
     placeBtn.disabled = false;
     placeBtn.textContent = originalText;
@@ -834,15 +837,109 @@ document.getElementById('place').addEventListener('click', async ()=>{
     });
 
     document.getElementById('download-pdf').addEventListener('click', ()=>{
-      const element = document.getElementById('receipt-card');
+      // Создаём упрощённую версию чека для PDF (без кнопок и сообщения об успехе)
+      const pdfReceiptHTML = `
+        <div style="font-family: 'MS Sans Serif', Arial, sans-serif; width: 80mm; margin: 0 auto; padding: 5mm; background: white;">
+          <!-- Шапка -->
+          <div style="text-align: center; margin-bottom: 15px;">
+            <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">" МЕРОС "</div>
+            <div style="font-size: 13px;">Телефон: +7 702 913 13 39</div>
+          </div>
+
+          <div style="height: 15px;"></div>
+
+          <!-- Номер чека -->
+          <div style="text-align: center; font-weight: bold; font-size: 13px; margin-bottom: 5px;">
+            ЧЕК НА ПРОДАЖУ № ${result.id}
+          </div>
+          <div style="text-align: center; font-size: 12px; margin-bottom: 15px;">
+            от ${dateStr} ${timeStr}
+          </div>
+
+          <!-- Таблица товаров -->
+          <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 8px 0; font-size: 12px; margin-bottom: 10px;">
+            <div style="margin-bottom: 5px;">Наименование&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Кол-во&nbsp;&nbsp;Цена&nbsp;&nbsp;&nbsp;&nbsp;Итог</div>
+          </div>
+
+          <!-- Товары -->
+          <div style="font-size: 12px;">
+            ${Object.entries(cartSnapshot).map(([idStr, qty], index) => {
+              const id = Number(idStr);
+              const p = PRODUCTS.find(x => x.id === id);
+              if (p) {
+                const itemTotal = (p.price * qty).toLocaleString('ru-RU');
+                const pricePerUnit = p.price.toLocaleString('ru-RU');
+                return `<div style="margin-bottom: 8px;">${index + 1}). ${p.name} / ${qty} шт. х ${pricePerUnit} = ${itemTotal} ₸</div>`;
+              }
+              return '';
+            }).join('')}
+          </div>
+
+          <!-- Итого наименований -->
+          <div style="font-size: 12px; margin-bottom: 15px;">
+            Всего наименований: ${Object.keys(cartSnapshot).length}
+          </div>
+
+          <!-- Итого сумма -->
+          <div style="border-top: 1px solid #000; padding-top: 10px; margin-bottom: 5px;">
+            ${deliveryCost > 0 ? `
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px;">
+                <span>Товары:</span>
+                <span>${total.toLocaleString('ru-RU')} ₸</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+                <span>Доставка:</span>
+                <span>${deliveryCost.toLocaleString('ru-RU')} ₸</span>
+              </div>
+            ` : ''}
+            <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: bold;">
+              <span>ИТОГО:</span>
+              <span>${totalWithDelivery.toLocaleString('ru-RU')} ₸</span>
+            </div>
+          </div>
+
+          <!-- Сумма прописью -->
+          <div style="text-align: right; font-size: 10px; color: #666; margin-bottom: 15px;">
+            (${totalInWords})
+          </div>
+
+          <!-- Данные покупателя -->
+          <div style="font-size: 12px; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+            <div style="margin-bottom: 5px;"><strong>Покупатель:</strong> ${name}</div>
+            <div style="margin-bottom: 5px;"><strong>Телефон:</strong> ${phone}</div>
+            ${address ? `<div><strong>Адрес доставки:</strong> ${address}</div>` : ''}
+          </div>
+
+          <!-- Спасибо -->
+          <div style="text-align: center; font-weight: bold; font-size: 13px; margin: 20px 0;">
+            СПАСИБО ЗА ПОКУПКУ!
+          </div>
+
+          <!-- Продавец -->
+          <div style="text-align: center; font-size: 13px; margin-top: 20px; color: #666;">
+            Частное лицо
+          </div>
+        </div>
+      `;
+
+      // Создаём временный элемент для PDF
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = pdfReceiptHTML;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      document.body.appendChild(tempDiv);
+
       const opt = {
-        margin:       10,
+        margin:       0,
         filename:     `Чек_заказа_${result.id}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'mm', format: 'a5', orientation: 'portrait' }
+        jsPDF:        { unit: 'mm', format: [80, 297], orientation: 'portrait' }
       };
-      html2pdf().set(opt).from(element).save();
+      
+      html2pdf().set(opt).from(tempDiv.firstChild).save().then(() => {
+        document.body.removeChild(tempDiv);
+      });
     });
 
     document.getElementById('send-wa').addEventListener('click', ()=>{
@@ -851,9 +948,9 @@ document.getElementById('place').addEventListener('click', async ()=>{
       waText += `от ${dateStr} ${timeStr}%0A`;
       waText += `------------------------%0A`;
       let itemNum = 0;
-      for (const idStr in cart) {
+      for (const idStr in cartSnapshot) {
         const id = Number(idStr);
-        const qty = cart[id];
+        const qty = cartSnapshot[id];
         const p = PRODUCTS.find(x => x.id === id);
         if (p) {
           itemNum++;
