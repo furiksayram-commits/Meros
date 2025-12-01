@@ -931,51 +931,53 @@ document.getElementById('place').addEventListener('click', async ()=>{
       tempDiv.style.zIndex = '-1000';
       tempDiv.style.opacity = '0';
       tempDiv.style.pointerEvents = 'none';
-      tempDiv.style.width = '300px'; // Фиксированная ширина для стабильного рендеринга
+      tempDiv.style.width = '300px';
+      tempDiv.style.overflow = 'visible';
       document.body.appendChild(tempDiv);
 
-      try {
-        // Вычисляем фактическую высоту контента в мм
-        const element = tempDiv.firstElementChild;
-        const contentHeightPx = element.offsetHeight;
-        const contentHeightMm = Math.ceil(contentHeightPx * 0.264583) + 20; // +20mm запас для отступов
-        
-        const opt = {
-          margin:       5,
-          filename:     `Чек_заказа_${result.id}.pdf`,
-          image:        { type: 'jpeg', quality: 0.95 },
-          html2canvas:  { 
-            scale: 2, 
-            useCORS: true, 
-            logging: false,
-            width: 300,  // Фиксированная ширина для canvas
-            windowWidth: 300  // Ширина окна для правильного рендеринга
-          },
-          jsPDF:        { unit: 'mm', format: [80, contentHeightMm], orientation: 'portrait' }
-        };
-        
-        // Генерируем PDF
-        html2pdf().set(opt).from(tempDiv.firstElementChild).save().then(() => {
-          console.log('PDF успешно создан');
-          setTimeout(() => {
+      // Небольшая задержка для рендеринга
+      setTimeout(() => {
+        try {
+          // Вычисляем фактическую высоту контента в мм
+          const element = tempDiv.firstElementChild;
+          const contentHeightPx = element.offsetHeight;
+          const contentHeightMm = Math.ceil(contentHeightPx * 0.264583) + 20; // +20mm запас для отступов
+          
+          const opt = {
+            margin:       5,
+            filename:     `Чек_заказа_${result.id}.pdf`,
+            image:        { type: 'jpeg', quality: 0.95 },
+            html2canvas:  { 
+              scale: 2, 
+              useCORS: true, 
+              logging: false
+            },
+            jsPDF:        { unit: 'mm', format: [80, contentHeightMm], orientation: 'portrait' }
+          };
+          
+          // Генерируем PDF
+          html2pdf().set(opt).from(element).save().then(() => {
+            console.log('PDF успешно создан');
+            setTimeout(() => {
+              if (tempDiv && tempDiv.parentNode) {
+                document.body.removeChild(tempDiv);
+              }
+            }, 500);
+          }).catch((error) => {
+            console.error('Ошибка при создании PDF:', error);
             if (tempDiv && tempDiv.parentNode) {
               document.body.removeChild(tempDiv);
             }
-          }, 500);
-        }).catch((error) => {
-          console.error('Ошибка при создании PDF:', error);
+            alert('Произошла ошибка при создании PDF: ' + error.message);
+          });
+        } catch (error) {
+          console.error('Ошибка при настройке PDF:', error);
           if (tempDiv && tempDiv.parentNode) {
             document.body.removeChild(tempDiv);
           }
-          alert('Произошла ошибка при создании PDF: ' + error.message);
-        });
-      } catch (error) {
-        console.error('Ошибка при настройке PDF:', error);
-        if (tempDiv && tempDiv.parentNode) {
-          document.body.removeChild(tempDiv);
+          alert('Произошла ошибка при настройке PDF: ' + error.message);
         }
-        alert('Произошла ошибка при настройке PDF: ' + error.message);
-      }
+      }, 100); // Задержка 100мс для рендеринга
     });
 
     document.getElementById('send-wa').addEventListener('click', ()=>{
