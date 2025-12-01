@@ -839,7 +839,7 @@ document.getElementById('place').addEventListener('click', async ()=>{
     document.getElementById('download-pdf').addEventListener('click', ()=>{
       // Создаём упрощённую версию чека для PDF (без кнопок и сообщения об успехе)
       const pdfReceiptHTML = `
-        <div style="font-family: Arial, sans-serif; width: 280px; margin: 0 auto; padding: 10px; background: white;">
+        <div style="font-family: Arial, sans-serif; width: 280px; min-width: 280px; max-width: 280px; margin: 0 auto; padding: 10px; background: white; box-sizing: border-box;">
           <!-- Шапка -->
           <div style="text-align: center; margin-bottom: 15px;">
             <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">" МЕРОС "</div>
@@ -931,6 +931,7 @@ document.getElementById('place').addEventListener('click', async ()=>{
       tempDiv.style.zIndex = '-1000';
       tempDiv.style.opacity = '0';
       tempDiv.style.pointerEvents = 'none';
+      tempDiv.style.width = '300px'; // Фиксированная ширина для стабильного рендеринга
       document.body.appendChild(tempDiv);
 
       try {
@@ -943,7 +944,13 @@ document.getElementById('place').addEventListener('click', async ()=>{
           margin:       5,
           filename:     `Чек_заказа_${result.id}.pdf`,
           image:        { type: 'jpeg', quality: 0.95 },
-          html2canvas:  { scale: 2, useCORS: true, logging: false },
+          html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            width: 300,  // Фиксированная ширина для canvas
+            windowWidth: 300  // Ширина окна для правильного рендеринга
+          },
           jsPDF:        { unit: 'mm', format: [80, contentHeightMm], orientation: 'portrait' }
         };
         
