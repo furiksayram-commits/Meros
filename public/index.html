@@ -1,7 +1,4 @@
-﻿        <button id="send-wa" class="btn secondary" style="background: #25D366; color: white;">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WA" style="height:18px;vertical-align:middle;margin-right:4px;">Отправить WA
-        </button>
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
@@ -209,7 +206,7 @@
       <div style="margin-bottom: 15px;">
         <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px; color: #374151;">📞 Телефон</label>
         <div style="position: relative;">
-          <input id="phone" placeholder="+7 (___) ___-__-__" style="width: 100%; padding: 12px 80px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
+          <input id="phone" type="tel" inputmode="numeric" placeholder="+7 (___) ___-__-__" style="width: 100%; padding: 12px 80px 12px 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" />
           <button id="clear-phone" class="btn-clear-input" style="display: none; position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: #9ca3af; color: white; width: 28px; height: 28px; border-radius: 50%; border: none; cursor: pointer; font-size: 16px; line-height: 1; transition: background 0.3s;">✕</button>
           <a href="https://t.me/MerosSayramBot?start=phone" target="_blank" class="btn-phone-help" title="Отправить номер через бота" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: #0088cc; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: background 0.3s;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -622,11 +619,58 @@
       const clearPhoneBtn = document.getElementById('clear-phone');
       
       if (phoneInput && clearPhoneBtn) {
-        phoneInput.addEventListener('input', function() {
-          clearPhoneBtn.style.display = this.value.trim() ? 'flex' : 'none';
+        // Установить начальное значение +7
+        if (!phoneInput.value) {
+          phoneInput.value = '+7';
+        }
+        
+        phoneInput.addEventListener('input', function(e) {
+          let value = this.value.replace(/\D/g, ''); // Удаляем все нецифровые символы
+          
+          // Если начинается с 8, заменяем на 7
+          if (value.startsWith('8')) {
+            value = '7' + value.slice(1);
+          }
+          
+          // Если не начинается с 7, добавляем 7
+          if (!value.startsWith('7')) {
+            value = '7' + value;
+          }
+          
+          // Форматируем номер
+          let formatted = '+7';
+          if (value.length > 1) {
+            formatted += ' (' + value.slice(1, 4);
+          }
+          if (value.length >= 5) {
+            formatted += ') ' + value.slice(4, 7);
+          }
+          if (value.length >= 8) {
+            formatted += '-' + value.slice(7, 9);
+          }
+          if (value.length >= 10) {
+            formatted += '-' + value.slice(9, 11);
+          }
+          
+          this.value = formatted;
+          clearPhoneBtn.style.display = value.length > 1 ? 'flex' : 'none';
         });
+        
+        phoneInput.addEventListener('focus', function() {
+          if (!this.value || this.value === '+7') {
+            this.value = '+7';
+          }
+        });
+        
+        phoneInput.addEventListener('keydown', function(e) {
+          // Предотвращаем удаление +7
+          if ((e.key === 'Backspace' || e.key === 'Delete') && this.value === '+7') {
+            e.preventDefault();
+          }
+        });
+        
         clearPhoneBtn.addEventListener('click', function() {
-          phoneInput.value = '';
+          phoneInput.value = '+7';
           this.style.display = 'none';
           phoneInput.focus();
         });
