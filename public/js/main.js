@@ -839,14 +839,14 @@ document.getElementById('place').addEventListener('click', async ()=>{
     document.getElementById('download-pdf').addEventListener('click', ()=>{
       // Создаём упрощённую версию чека для PDF (без кнопок и сообщения об успехе)
       const pdfReceiptHTML = `
-        <div style="font-family: 'MS Sans Serif', Arial, sans-serif; width: 80mm; margin: 0 auto; padding: 5mm; background: white;">
+        <div style="font-family: Arial, sans-serif; width: 280px; margin: 0 auto; padding: 10px; background: white;">
           <!-- Шапка -->
           <div style="text-align: center; margin-bottom: 15px;">
             <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">" МЕРОС "</div>
             <div style="font-size: 13px;">Телефон: +7 702 913 13 39</div>
           </div>
 
-          <div style="height: 15px;"></div>
+          <div style="height: 10px;"></div>
 
           <!-- Номер чека -->
           <div style="text-align: center; font-weight: bold; font-size: 13px; margin-bottom: 5px;">
@@ -858,7 +858,7 @@ document.getElementById('place').addEventListener('click', async ()=>{
 
           <!-- Таблица товаров -->
           <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 8px 0; font-size: 12px; margin-bottom: 10px;">
-            <div style="margin-bottom: 5px;">Наименование&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Кол-во&nbsp;&nbsp;Цена&nbsp;&nbsp;&nbsp;&nbsp;Итог</div>
+            <div>Наименование / Кол-во / Цена / Итог</div>
           </div>
 
           <!-- Товары -->
@@ -925,21 +925,50 @@ document.getElementById('place').addEventListener('click', async ()=>{
       // Создаём временный элемент для PDF
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = pdfReceiptHTML;
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
+      tempDiv.style.position = 'fixed';
+      tempDiv.style.left = '0';
+      tempDiv.style.top = '0';
+      tempDiv.style.zIndex = '-1000';
+      tempDiv.style.opacity = '0';
+      tempDiv.style.pointerEvents = 'none';
       document.body.appendChild(tempDiv);
 
-      const opt = {
-        margin:       0,
-        filename:     `Чек_заказа_${result.id}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'mm', format: [80, 297], orientation: 'portrait' }
-      };
-      
-      html2pdf().set(opt).from(tempDiv.firstChild).save().then(() => {
-        document.body.removeChild(tempDiv);
-      });
+      try {
+        // Вычисляем фактическую высоту контента в мм
+        const element = tempDiv.firstElementChild;
+        const contentHeightPx = element.offsetHeight;
+        const contentHeightMm = Math.ceil(contentHeightPx * 0.264583) + 20; // +20mm запас для отступов
+        
+        const opt = {
+          margin:       5,
+          filename:     `Чек_заказа_${result.id}.pdf`,
+          image:        { type: 'jpeg', quality: 0.95 },
+          html2canvas:  { scale: 2, useCORS: true, logging: false },
+          jsPDF:        { unit: 'mm', format: [80, contentHeightMm], orientation: 'portrait' }
+        };
+        
+        // Генерируем PDF
+        html2pdf().set(opt).from(tempDiv.firstElementChild).save().then(() => {
+          console.log('PDF успешно создан');
+          setTimeout(() => {
+            if (tempDiv && tempDiv.parentNode) {
+              document.body.removeChild(tempDiv);
+            }
+          }, 500);
+        }).catch((error) => {
+          console.error('Ошибка при создании PDF:', error);
+          if (tempDiv && tempDiv.parentNode) {
+            document.body.removeChild(tempDiv);
+          }
+          alert('Произошла ошибка при создании PDF: ' + error.message);
+        });
+      } catch (error) {
+        console.error('Ошибка при настройке PDF:', error);
+        if (tempDiv && tempDiv.parentNode) {
+          document.body.removeChild(tempDiv);
+        }
+        alert('Произошла ошибка при настройке PDF: ' + error.message);
+      }
     });
 
     document.getElementById('send-wa').addEventListener('click', ()=>{
