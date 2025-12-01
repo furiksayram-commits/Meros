@@ -264,6 +264,25 @@ if(!dbExists){
       });
     }
   });
+  
+  // Проверяем наличие поля delivery_cost в таблице orders
+  db.all("PRAGMA table_info(orders)", [], (err, columns) => {
+    if (err) {
+      console.error('Error checking orders table:', err);
+      return;
+    }
+    
+    const hasDeliveryCost = columns.some(col => col.name === 'delivery_cost');
+    if (!hasDeliveryCost) {
+      db.run("ALTER TABLE orders ADD COLUMN delivery_cost INTEGER DEFAULT 0", (err) => {
+        if (err) {
+          console.error('Error adding delivery_cost column:', err);
+        } else {
+          console.log('Added delivery_cost column to orders table.');
+        }
+      });
+    }
+  });
 }
 
 // --- EXPRESS ---
@@ -785,23 +804,23 @@ app.get('/api/products/export-template', (req, res) => {
 
 // --- API: создание заказа ---
 app.post('/api/orders', (req, res) => {
-  const { name, phone, address, items, total, location, telegram_id } = req.body || {};
+  const { name, phone, address, items, total, delivery_cost, location, telegram_id } = req.body || {};
   if(!name || !phone) return res.status(400).send('name and phone are required');
 
   // Если есть telegram_id, найдем user_id
   if (telegram_id) {
     db.get('SELECT id FROM users WHERE telegram_id = ?', [telegram_id], (err, user) => {
       const userId = user ? user.id : null;
-      insertOrder(name, phone, address, items, total, location, userId, res, telegram_id);
+      insertOrder(name, phone, address, items, total, delivery_cost || 0, location, userId, res, telegram_id);
     });
   } else {
-    insertOrder(name, phone, address, items, total, location, null, res, null);
+    insertOrder(name, phone, address, items, total, delivery_cost || 0, location, null, res, null);
   }
 });
 
-function insertOrder(name, phone, address, items, total, location, userId, res, telegram_id) {
-  const stmt = db.prepare(`INSERT INTO orders (name,phone,address,items,total,user_id) VALUES (?,?,?,?,?,?)`);
-  stmt.run(name, phone, address || '', JSON.stringify(items||{}), total || 0, userId, async function(err){
+function insertOrder(name, phone, address, items, total, delivery_cost, location, userId, res, telegram_id) {
+  const stmt = db.prepare(`INSERT INTO orders (name,phone,address,items,total,delivery_cost,user_id) VALUES (?,?,?,?,?,?,?)`);
+  stmt.run(name, phone, address || '', JSON.stringify(items||{}), total || 0, delivery_cost || 0, userId, async function(err){
     if(err) {
       console.error(err);
       return res.status(500).send('db error');
@@ -926,27 +945,40 @@ app.get('/api/user/orders/:telegram_id', (req, res) => {
 app.get('/api/stats/visits', (req, res) => {
   const today = new Date().toISOString().split('T')[0];
   
-  // Общее количество посещений
-  db.get('SELECT COUNT(*) as total FROM visits', [], (err1, totalRow) => {
-    if (err1) return res.status(500).send('db error');
+  // Проверяем существование таблицы visits
+  db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='visits'", [], (err, table) => {
+    if (err || !table) {
+      // Таблица не существует, возвращаем нули
+      return res.json({
+        total: 0,
+        today: 0,
+        unique_ips: 0,
+        recent: []
+      });
+    }
     
-    // Посещения сегодня
-    db.get('SELECT COUNT(*) as today FROM visits WHERE DATE(visited_at) = ?', [today], (err2, todayRow) => {
-      if (err2) return res.status(500).send('db error');
+    // Общее количество посещений
+    db.get('SELECT COUNT(*) as total FROM visits', [], (err1, totalRow) => {
+      if (err1) return res.status(500).json({ error: 'db error' });
       
-      // Уникальные IP
-      db.get('SELECT COUNT(DISTINCT ip_address) as unique_ips FROM visits', [], (err3, uniqueRow) => {
-        if (err3) return res.status(500).send('db error');
+      // Посещения сегодня
+      db.get('SELECT COUNT(*) as today FROM visits WHERE DATE(visited_at) = ?', [today], (err2, todayRow) => {
+        if (err2) return res.status(500).json({ error: 'db error' });
         
-        // Последние 10 посещений
-        db.all('SELECT ip_address, user_agent, referrer, visited_at FROM visits ORDER BY visited_at DESC LIMIT 10', [], (err4, recent) => {
-          if (err4) return res.status(500).send('db error');
+        // Уникальные IP
+        db.get('SELECT COUNT(DISTINCT ip_address) as unique_ips FROM visits', [], (err3, uniqueRow) => {
+          if (err3) return res.status(500).json({ error: 'db error' });
           
-          res.json({
-            total: totalRow.total,
-            today: todayRow.today,
-            unique_ips: uniqueRow.unique_ips,
-            recent: recent
+          // Последние 10 посещений
+          db.all('SELECT ip_address, user_agent, referrer, visited_at FROM visits ORDER BY visited_at DESC LIMIT 10', [], (err4, recent) => {
+            if (err4) return res.status(500).json({ error: 'db error' });
+            
+            res.json({
+              total: totalRow.total,
+              today: todayRow.today,
+              unique_ips: uniqueRow.unique_ips,
+              recent: recent
+            });
           });
         });
       });
@@ -956,7 +988,7 @@ app.get('/api/stats/visits', (req, res) => {
 
 // --- API: список заказов ---
 app.get('/api/orders', (req, res) => {
-  db.all('SELECT id,name,phone,address,items,total,status,created_at FROM orders ORDER BY id DESC', [], (err, rows)=>{
+  db.all('SELECT id,name,phone,address,items,total,delivery_cost,status,created_at FROM orders ORDER BY id DESC', [], (err, rows)=>{
     if(err) return res.status(500).send('db error');
     res.json(rows.map(r => ({...r, items: JSON.parse(r.items||'{}')})));
   });

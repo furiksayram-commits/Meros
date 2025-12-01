@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ панель - Магазин цемента</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         /* Экран авторизации */
         .login-screen {
@@ -561,6 +562,12 @@
             try {
                 document.getElementById('orders-list').innerHTML = '<div class="loading">Загрузка заказов...</div>';
                 
+                // Загружаем товары для правильного отображения названий
+                if (allProducts.length === 0) {
+                    const productsResponse = await fetch('/api/products');
+                    allProducts = await productsResponse.json();
+                }
+                
                 const response = await fetch('/api/orders');
                 allOrders = await response.json();
                 
@@ -617,8 +624,20 @@
                 container.innerHTML = '<div class="empty-state">Заказы не найдены</div>';
                 return;
             }
+            
+            // Отладка: выводим первый заказ для проверки
+            if (orders.length > 0) {
+                console.log('Пример заказа:', orders[0]);
+                console.log('delivery_cost:', orders[0].delivery_cost);
+            }
 
-            container.innerHTML = orders.map(order => `
+            container.innerHTML = orders.map(order => {
+                // Вычисляем сумму товаров
+                const itemsTotal = Object.entries(order.items).reduce((sum, [id, qty]) => {
+                    return sum + (getProductPrice(parseInt(id)) * qty);
+                }, 0);
+                
+                return `
                 <div class="order-card status-${order.status || 'new'}">
                     <div class="order-header">
                         <div>
@@ -641,9 +660,15 @@
                         ${Object.entries(order.items).map(([id, qty]) => `
                             <div class="order-item">
                                 <span>${getProductName(parseInt(id))}</span>
-                                <span>${qty} шт × ${getProductPrice(parseInt(id))} ₸ = <strong>${(getProductPrice(parseInt(id)) * qty).toLocaleString('ru-RU')} ₸</strong></span>
+                                <span>${qty} шт × ${getProductPrice(parseInt(id)).toLocaleString('ru-RU')} ₸ = <strong>${(getProductPrice(parseInt(id)) * qty).toLocaleString('ru-RU')} ₸</strong></span>
                             </div>
                         `).join('')}
+                        ${order.delivery_cost && order.delivery_cost > 0 ? `
+                            <div class="order-item" style="border-top: 1px solid #dee2e6; margin-top: 8px; padding-top: 8px;">
+                                <span>🚚 Доставка</span>
+                                <span><strong>${parseInt(order.delivery_cost).toLocaleString('ru-RU')} ₸</strong></span>
+                            </div>
+                        ` : ''}
                     </div>
                     
                     <div style="text-align: right; font-size: 1.2em; font-weight: bold; margin-top: 10px;">
@@ -651,6 +676,9 @@
                     </div>
                     
                     <div class="order-actions">
+                        <button class="btn" onclick="downloadOrderReceipt(${order.id})">
+                            📄 Скачать чек
+                        </button>
                         <button class="btn secondary" onclick="changeStatus(${order.id})">
                             Сменить статус
                         </button>
@@ -662,7 +690,8 @@
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // Обновление статистики
@@ -707,18 +736,15 @@
         }
 
         function getProductName(id) {
-            const products = {
-                1: 'Цемент Шымкент 450',
-                2: 'Цемент Шымкент 500', 
-                3: 'Цемент Стандарт 450',
-                4: 'Цемент Аккерман'
-            };
-            return products[id] || `Товар #${id}`;
+            // Используем загруженные товары из базы данных
+            const product = allProducts.find(p => p.id === id);
+            return product ? product.name : `Товар #${id}`;
         }
 
         function getProductPrice(id) {
-            const prices = {1: 2050, 2: 2100, 3: 2000, 4: 2200};
-            return prices[id] || 0;
+            // Используем загруженные товары из базы данных
+            const product = allProducts.find(p => p.id === id);
+            return product ? product.price : 0;
         }
 
         // Действия с заказами
@@ -796,6 +822,187 @@
 
         function callCustomer(phone) {
             window.open(`tel:${phone}`, '_self');
+        }
+        
+        // Функция генерации и скачивания чека для заказа
+        function downloadOrderReceipt(orderId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) {
+                alert('Заказ не найден');
+                return;
+            }
+            
+            // Форматируем дату и время
+            const orderDate = new Date(order.created_at);
+            const dateStr = orderDate.toLocaleDateString('ru-RU');
+            const timeStr = orderDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            
+            // Вычисляем сумму товаров
+            let itemsTotal = 0;
+            const itemsHTML = Object.entries(order.items).map(([id, qty], index) => {
+                const productId = parseInt(id);
+                const price = getProductPrice(productId);
+                const name = getProductName(productId);
+                const itemTotal = price * qty;
+                itemsTotal += itemTotal;
+                return `<div style="margin-bottom: 8px;">${index + 1}). ${name} / ${qty} шт. х ${price.toLocaleString('ru-RU')} = ${itemTotal.toLocaleString('ru-RU')} ₸</div>`;
+            }).join('');
+            
+            const deliveryCost = parseInt(order.delivery_cost || 0);
+            const total = parseInt(order.total);
+            
+            // Функция для преобразования числа в слова (упрощённая версия)
+            function numberToWords(num) {
+                const units = ['', 'одна', 'две', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+                const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+                const tens = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
+                const hundreds = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
+                const thousands = ['', 'одна тысяча', 'две тысячи', 'три тысячи', 'четыре тысячи', 'пять тысяч', 'шесть тысяч', 'семь тысяч', 'восемь тысяч', 'девять тысяч'];
+                
+                if (num === 0) return 'ноль';
+                if (num >= 1000000) return num.toLocaleString('ru-RU');
+                
+                let result = '';
+                const h = Math.floor(num / 100);
+                const t = Math.floor((num % 100) / 10);
+                const u = num % 10;
+                const th = Math.floor(num / 1000);
+                
+                if (th > 0) {
+                    result += thousands[th] + ' ';
+                    num = num % 1000;
+                }
+                
+                if (h > 0) result += hundreds[h] + ' ';
+                if (t === 1) {
+                    result += teens[u] + ' ';
+                } else {
+                    if (t > 0) result += tens[t] + ' ';
+                    if (u > 0) result += units[u] + ' ';
+                }
+                
+                return result.trim();
+            }
+            
+            const totalInWords = numberToWords(total) + ' тенге';
+            
+            // HTML чека
+            const receiptHTML = `
+                <div style="width: 100%; display: flex; justify-content: center; align-items: flex-start;">
+                  <div style="font-family: Arial, sans-serif; width: 280px; min-width: 280px; max-width: 280px; padding: 10px; background: white; box-sizing: border-box;">
+                    <!-- Шапка -->
+                    <div style="text-align: center; margin-bottom: 15px;">
+                      <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">" МЕРОС "</div>
+                      <div style="font-size: 13px;">Телефон: +7 702 913 13 39</div>
+                    </div>
+
+                    <div style="height: 10px;"></div>
+
+                    <!-- Номер чека -->
+                    <div style="text-align: center; font-weight: bold; font-size: 13px; margin-bottom: 5px;">
+                      ЧЕК НА ПРОДАЖУ № ${order.id}
+                    </div>
+                    <div style="text-align: center; font-size: 12px; margin-bottom: 15px;">
+                      от ${dateStr} ${timeStr}
+                    </div>
+
+                    <!-- Таблица товаров -->
+                    <div style="border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 8px 0; font-size: 12px; margin-bottom: 10px;">
+                      <div>Наименование / Кол-во / Цена / Итог</div>
+                    </div>
+
+                    <!-- Товары -->
+                    <div style="font-size: 12px;">
+                      ${itemsHTML}
+                    </div>
+
+                    <!-- Итого наименований -->
+                    <div style="font-size: 12px; margin-bottom: 15px;">
+                      Всего наименований: ${Object.keys(order.items).length}
+                    </div>
+
+                    <!-- Итого сумма -->
+                    <div style="border-top: 1px solid #000; padding-top: 10px; margin-bottom: 5px;">
+                      ${deliveryCost > 0 ? `
+                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px;">
+                          <span>Товары:</span>
+                          <span>${itemsTotal.toLocaleString('ru-RU')} ₸</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
+                          <span>Доставка:</span>
+                          <span>${deliveryCost.toLocaleString('ru-RU')} ₸</span>
+                        </div>
+                      ` : ''}
+                      <div style="display: flex; justify-content: space-between; font-size: 15px; font-weight: bold;">
+                        <span>ИТОГО:</span>
+                        <span>${total.toLocaleString('ru-RU')} ₸</span>
+                      </div>
+                    </div>
+
+                    <!-- Сумма прописью -->
+                    <div style="text-align: right; font-size: 10px; color: #666; margin-bottom: 15px;">
+                      (${totalInWords})
+                    </div>
+
+                    <!-- Данные покупателя -->
+                    <div style="font-size: 12px; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                      <div style="margin-bottom: 5px;"><strong>Покупатель:</strong> ${order.name}</div>
+                      <div style="margin-bottom: 5px;"><strong>Телефон:</strong> ${order.phone}</div>
+                      ${order.address ? `<div><strong>Адрес доставки:</strong> ${order.address}</div>` : ''}
+                    </div>
+
+                    <!-- Спасибо -->
+                    <div style="text-align: center; font-weight: bold; font-size: 13px; margin: 20px 0;">
+                      СПАСИБО ЗА ПОКУПКУ!
+                    </div>
+
+                    <!-- Продавец -->
+                    <div style="text-align: center; font-size: 13px; margin-top: 20px; color: #666;">
+                      Частное лицо
+                    </div>
+                  </div>
+                </div>
+            `;
+            
+            // Создаём временный элемент
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = receiptHTML;
+            tempDiv.style.position = 'fixed';
+            tempDiv.style.left = '0';
+            tempDiv.style.top = '0';
+            tempDiv.style.opacity = '0.01';
+            tempDiv.style.zIndex = '-1000';
+            tempDiv.style.pointerEvents = 'none';
+            document.body.appendChild(tempDiv);
+            
+            setTimeout(() => {
+                const element = tempDiv.firstElementChild;
+                const contentHeightPx = element.offsetHeight;
+                const contentHeightMm = Math.ceil(contentHeightPx * 0.264583) + 20;
+                
+                const opt = {
+                    margin: 0,
+                    filename: `Чек_заказа_${order.id}.pdf`,
+                    image: { type: 'jpeg', quality: 0.95 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false },
+                    jsPDF: { unit: 'mm', format: [80, contentHeightMm], orientation: 'portrait' }
+                };
+                
+                html2pdf().set(opt).from(element).save().then(() => {
+                    console.log('Чек скачан');
+                    setTimeout(() => {
+                        if (tempDiv && tempDiv.parentNode) {
+                            document.body.removeChild(tempDiv);
+                        }
+                    }, 500);
+                }).catch((error) => {
+                    console.error('Ошибка при создании PDF:', error);
+                    if (tempDiv && tempDiv.parentNode) {
+                        document.body.removeChild(tempDiv);
+                    }
+                    alert('Произошла ошибка при создании PDF');
+                });
+            }, 100);
         }
 
         function clearFilters() {

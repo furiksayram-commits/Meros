@@ -839,7 +839,8 @@ document.getElementById('place').addEventListener('click', async ()=>{
     document.getElementById('download-pdf').addEventListener('click', ()=>{
       // Создаём упрощённую версию чека для PDF (без кнопок и сообщения об успехе)
       const pdfReceiptHTML = `
-        <div style="font-family: Arial, sans-serif; width: 280px; min-width: 280px; max-width: 280px; margin: 0 auto; padding: 10px; background: white; box-sizing: border-box;">
+        <div style="width: 100%; display: flex; justify-content: center; align-items: flex-start;">
+          <div style="font-family: Arial, sans-serif; width: 280px; min-width: 280px; max-width: 280px; padding: 10px; background: white; box-sizing: border-box;">
           <!-- Шапка -->
           <div style="text-align: center; margin-bottom: 15px;">
             <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">" МЕРОС "</div>
@@ -919,6 +920,7 @@ document.getElementById('place').addEventListener('click', async ()=>{
           <div style="text-align: center; font-size: 13px; margin-top: 20px; color: #666;">
             Частное лицо
           </div>
+          </div>
         </div>
       `;
 
@@ -928,11 +930,9 @@ document.getElementById('place').addEventListener('click', async ()=>{
       tempDiv.style.position = 'fixed';
       tempDiv.style.left = '0';
       tempDiv.style.top = '0';
+      tempDiv.style.opacity = '0.01';
       tempDiv.style.zIndex = '-1000';
-      tempDiv.style.opacity = '0';
       tempDiv.style.pointerEvents = 'none';
-      tempDiv.style.width = '300px';
-      tempDiv.style.overflow = 'visible';
       document.body.appendChild(tempDiv);
 
       // Небольшая задержка для рендеринга
@@ -944,11 +944,11 @@ document.getElementById('place').addEventListener('click', async ()=>{
           const contentHeightMm = Math.ceil(contentHeightPx * 0.264583) + 20; // +20mm запас для отступов
           
           const opt = {
-            margin:       5,
+            margin:       0,
             filename:     `Чек_заказа_${result.id}.pdf`,
             image:        { type: 'jpeg', quality: 0.95 },
             html2canvas:  { 
-              scale: 2, 
+              scale: 2,
               useCORS: true, 
               logging: false
             },
