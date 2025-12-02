@@ -1667,13 +1667,44 @@
                     resultDiv.style.background = '#d4edda';
                     resultDiv.style.color = '#155724';
                     
-                    let message = `✓ Новых товаров добавлено: ${result.imported}\n✓ Цены обновлены у: ${result.updated}\nВсего обработано строк: ${result.total}`;
+                    let message = `<strong>✓ Импорт завершен!</strong><br><br>`;
+                    message += `• Новых товаров добавлено: <strong>${result.imported}</strong><br>`;
+                    message += `• Цены обновлены у товаров: <strong>${result.updated}</strong><br>`;
+                    message += `• Всего обработано строк: <strong>${result.total}</strong><br>`;
                     
-                    if (result.errors && result.errors.length > 0) {
-                        message += `\n\nОшибки:\n${result.errors.join('\n')}`;
+                    // Показываем список обновленных товаров
+                    if (result.updatedProducts && result.updatedProducts.length > 0) {
+                        message += `<br><strong>📝 Обновленные товары:</strong><br>`;
+                        message += '<div style="max-height: 200px; overflow-y: auto; margin: 10px 0; padding: 10px; background: #fff; border-radius: 4px; color: #333;">';
+                        result.updatedProducts.forEach(item => {
+                            message += `<div style="margin-bottom: 5px; padding: 5px; border-bottom: 1px solid #e0e0e0;">`;
+                            message += `<strong>Строка ${item.row}:</strong> ${item.name}<br>`;
+                            message += `<span style="color: #666;">Старая цена: ${item.oldPrice.toLocaleString('ru-RU')} ₸ → Новая цена: ${item.newPrice.toLocaleString('ru-RU')} ₸</span>`;
+                            message += `</div>`;
+                        });
+                        message += '</div>';
                     }
                     
-                    resultDiv.innerHTML = message.replace(/\n/g, '<br>');
+                    // Показываем ошибки с деталями
+                    if (result.errors && result.errors.length > 0) {
+                        message += `<br><strong style="color: #721c24;">⚠️ Ошибки (${result.errors.length}):</strong><br>`;
+                        message += '<div style="max-height: 200px; overflow-y: auto; margin: 10px 0; padding: 10px; background: #f8d7da; border-radius: 4px; color: #721c24;">';
+                        result.errors.forEach(error => {
+                            message += `<div style="margin-bottom: 5px; padding: 5px; border-bottom: 1px solid #f5c6cb;">• ${error}</div>`;
+                        });
+                        message += '</div>';
+                        
+                        // Дополнительная информация о том, как исправить
+                        message += '<div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 4px; color: #856404;">';
+                        message += '<strong>💡 Как исправить:</strong><br>';
+                        message += '1. Откройте Excel файл<br>';
+                        message += '2. Найдите указанные строки (номер строки = номер в Excel)<br>';
+                        message += '3. Заполните пустые ячейки "Название" и "Цена"<br>';
+                        message += '4. Сохраните и повторите импорт';
+                        message += '</div>';
+                    }
+                    
+                    resultDiv.innerHTML = message;
                     
                     // Обновляем список товаров
                     setTimeout(() => {

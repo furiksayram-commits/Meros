@@ -626,12 +626,18 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     
-    // Конвертируем в JSON
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    // Конвертируем в JSON с сохранением информации о строках
+    const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+    
+    // Получаем диапазон данных для точного определения строк
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    const headerRow = range.s.r; // Строка с заголовком (обычно 0)
     
   let imported = 0; // вставлено новых
   let updated = 0;  // обновлено существующих цен
     let errors = [];
+    let updatedProducts = []; // Список обновленных товаров
+    let errorDetails = []; // Детальная информация об ошибках
 
     // Получаем все категории для поиска по имени
     const categories = await new Promise((resolve, reject) => {
@@ -644,16 +650,32 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
     // Обрабатываем каждую строку
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
+      // Excel строка = индекс в массиве + строка заголовка + 2 (т.к. Excel начинается с 1, а заголовок занимает 1 строку)
+      const excelRowNumber = i + headerRow + 2;
       
       // Ожидаемые колонки: Название, Цена, Категория, Изображение, В_наличии
-      const name = row['Название'] || row['название'] || row['name'];
-      const price = parseInt(row['Цена'] || row['цена'] || row['price']) || 0;
+      const name = (row['Название'] || row['название'] || row['name'] || '').toString().trim();
+      const priceRaw = row['Цена'] || row['цена'] || row['price'];
+      const price = parseInt(priceRaw) || 0;
       const categoryName = row['Категория'] || row['категория'] || row['category'];
       const image = row['Изображение'] || row['изображение'] || row['image'] || '';
       const stock = row['В_наличии'] || row['в_наличии'] || row['stock'];
 
       if (!name || !price) {
-        errors.push(`Строка ${i + 2}: отсутствует название или цена`);
+        const missingFields = [];
+        if (!name) missingFields.push('название');
+        if (!price) missingFields.push('цена');
+        
+        // Показываем что есть в строке для отладки
+        const rowPreview = name || categoryName || '(пустая строка)';
+        
+        errorDetails.push({
+          row: excelRowNumber,
+          name: name || categoryName || '(пусто)',
+          price: priceRaw || '(пусто)',
+          reason: `отсутствует ${missingFields.join(' и ')}`
+        });
+        errors.push(`Строка ${excelRowNumber}: "${rowPreview}" - отсутствует ${missingFields.join(' и ')}`);
         continue;
       }
 
@@ -685,7 +707,8 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
           [name],
           (err, row) => {
             if (err) {
-              errors.push(`Строка ${i + 2}: ошибка поиска товара - ${err.message}`);
+              errorDetails.push({ row: excelRowNumber, name, reason: `ошибка поиска - ${err.message}` });
+              errors.push(`Строка ${excelRowNumber}: "${name}" - ошибка поиска товара - ${err.message}`);
               resolve(null);
             } else {
               resolve(row || null);
@@ -699,6 +722,8 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
         const normalizedImage = (image && String(image).trim()) ? String(image).trim() : '';
         const needSetDefaultImage = (!existing.image || String(existing.image).trim() === '') && normalizedImage === '';
   const imageToSet = needSetDefaultImage ? '/assets/pch.webp' : (normalizedImage || null);
+        
+        const oldPrice = existing.price;
 
         await new Promise((resolve) => {
           if (imageToSet !== null) {
@@ -707,9 +732,11 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
               [price, imageToSet, existing.id],
               (err) => {
                 if (err) {
-                  errors.push(`Строка ${i + 2}: ошибка обновления товара - ${err.message}`);
+                  errorDetails.push({ row: excelRowNumber, name, reason: `ошибка обновления - ${err.message}` });
+                  errors.push(`Строка ${excelRowNumber}: "${name}" - ошибка обновления товара - ${err.message}`);
                 } else {
                   updated++;
+                  updatedProducts.push({ row: excelRowNumber, name, oldPrice, newPrice: price });
                 }
                 resolve();
               }
@@ -720,9 +747,11 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
               [price, existing.id],
               (err) => {
                 if (err) {
-                  errors.push(`Строка ${i + 2}: ошибка обновления цены - ${err.message}`);
+                  errorDetails.push({ row: excelRowNumber, name, reason: `ошибка обновления цены - ${err.message}` });
+                  errors.push(`Строка ${excelRowNumber}: "${name}" - ошибка обновления цены - ${err.message}`);
                 } else {
                   updated++;
+                  updatedProducts.push({ row: excelRowNumber, name, oldPrice, newPrice: price });
                 }
                 resolve();
               }
@@ -738,7 +767,8 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
           const insertImage = (image && String(image).trim()) ? String(image).trim() : '/assets/pch.webp';
           stmt.run(name, price, insertImage, stockValue, category_id, function(err) {
             if (err) {
-              errors.push(`Строка ${i + 2}: ошибка вставки - ${err.message}`);
+              errorDetails.push({ row: excelRowNumber, name, reason: `ошибка вставки - ${err.message}` });
+              errors.push(`Строка ${excelRowNumber}: "${name}" - ошибка вставки - ${err.message}`);
             } else {
               imported++;
             }
@@ -755,8 +785,10 @@ app.post('/api/products/import', uploadExcel.single('file'), async (req, res) =>
       success: true,
       imported,
       updated,
+      updatedProducts, // Список обновленных товаров с деталями
       total: data.length,
-      errors
+      errors,
+      errorDetails // Детали ошибок
     });
 
   } catch (error) {
