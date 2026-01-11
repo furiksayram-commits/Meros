@@ -1236,6 +1236,7 @@ function selectDeliveryOption(type) {
     // Обнулить стоимость доставки для самовывоза
     deliveryCost = 0;
   }
+
 }
 
 // Yandex Maps автодополнение адресов
@@ -1479,7 +1480,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Обработчики для кнопок навигации
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
       const page = item.getAttribute('data-page');
+      console.log('Navigation clicked:', page);
       handleBottomNavClick(page);
       
       // Обновляем активный элемент
@@ -1510,17 +1515,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Обработка кликов по нижней навигации
 function handleBottomNavClick(page) {
+  console.log('handleBottomNavClick called with page:', page);
+  
   switch(page) {
     case 'home':
-      // Возврат на главную - ТОЛЬКО прокрутка, без открытия каталога
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      // Закрываем каталог если он открыт
+      // Возврат на главную - полный переход на главную страницу с товарами
+      
+      // 1. Закрываем ВСЕ модальные окна
+      const allModals = document.querySelectorAll('.modal');
+      allModals.forEach(modal => {
+        modal.style.display = 'none';
+      });
+      
+      // 2. Закрываем каталог если он открыт
       const sidebar = document.getElementById('categories-sidebar');
       const overlay = document.getElementById('categories-overlay');
-      if (sidebar.classList.contains('open')) {
+      if (sidebar && sidebar.classList.contains('open')) {
         sidebar.classList.remove('open');
+      }
+      if (overlay && overlay.classList.contains('active')) {
         overlay.classList.remove('active');
       }
+      
+      // 3. Загружаем и отображаем все товары
+      loadProducts();
+      
+      // 4. Прокручиваем вверх к началу страницы товаров
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 100);
+      
+      console.log('Home button clicked - returning to main page with all products');
       break;
       
     case 'catalog':
@@ -1698,7 +1723,6 @@ function showToastNotification(message) {
     toast.remove();
   }, 1000);
 }
-
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
@@ -1722,3 +1746,4 @@ document.addEventListener('DOMContentLoaded', () => {
   // Обработчик клика по имени пользователя (выход)
   document.getElementById('user-info')?.addEventListener('click', logout);
 });
+
