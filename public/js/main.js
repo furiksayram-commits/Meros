@@ -1236,7 +1236,6 @@ function selectDeliveryOption(type) {
     // Обнулить стоимость доставки для самовывоза
     deliveryCost = 0;
   }
-
 }
 
 // Yandex Maps автодополнение адресов
@@ -1723,6 +1722,7 @@ function showToastNotification(message) {
     toast.remove();
   }, 1000);
 }
+
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded fired');
@@ -1746,4 +1746,3 @@ document.addEventListener('DOMContentLoaded', () => {
   // Обработчик клика по имени пользователя (выход)
   document.getElementById('user-info')?.addEventListener('click', logout);
 });
-
