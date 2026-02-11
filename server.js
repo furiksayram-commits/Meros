@@ -342,8 +342,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Middleware для отслеживания посещений
 app.use((req, res, next) => {
-  // Отслеживаем только главную страницу и страницы товаров, пропускаем API и статику
-  if (req.path === '/' || req.path === '/index.html') {
+  // Отслеживаем только главную и каталог, пропускаем API и статику
+  if (req.path === '/' || req.path === '/index.html' || req.path === '/catalog') {
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
     const referrer = req.headers['referer'] || req.headers['referrer'] || 'direct';
@@ -393,6 +393,8 @@ async function sendOrderToTelegram(order) {
     msg += `👤 *Имя:* ${escapeMarkdown(order.name)}\n`;
   }
   
+  const deliveryLabel = order.delivery_type === 'pickup' ? 'Самовывоз' : 'Доставка';
+  msg += `🚚 *Способ получения:* ${deliveryLabel}\n`;
   msg += `📞 *Телефон:* ${order.phone}\n🏠 *Адрес:* ${escapeMarkdown(order.address || '-')}\n`;
   
   // Добавляем координаты если есть
@@ -836,21 +838,32 @@ app.get('/api/products/export-template', (req, res) => {
 
 // --- API: создание заказа ---
 app.post('/api/orders', (req, res) => {
-  const { name, phone, address, items, total, delivery_cost, location, telegram_id } = req.body || {};
+  const { name, phone, address, items, total, delivery_cost, delivery_type, location, telegram_id } = req.body || {};
   if(!name || !phone) return res.status(400).send('name and phone are required');
 
   // Если есть telegram_id, найдем user_id
   if (telegram_id) {
     db.get('SELECT id FROM users WHERE telegram_id = ?', [telegram_id], (err, user) => {
       const userId = user ? user.id : null;
-      insertOrder(name, phone, address, items, total, delivery_cost || 0, location, userId, res, telegram_id);
+      insertOrder(name, phone, address, items, total, delivery_cost || 0, delivery_type, location, userId, res, telegram_id);
     });
   } else {
-    insertOrder(name, phone, address, items, total, delivery_cost || 0, location, null, res, null);
+    insertOrder(name, phone, address, items, total, delivery_cost || 0, delivery_type, location, null, res, null);
   }
 });
 
-function insertOrder(name, phone, address, items, total, delivery_cost, location, userId, res, telegram_id) {
+// multer for PDF receipt uploads (memory)
+const uploadPdf = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: function (req, file, cb) {
+    const isPdf = file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf');
+    if (isPdf) return cb(null, true);
+    cb(new Error('Only PDF files are allowed'));
+  }
+});
+
+function insertOrder(name, phone, address, items, total, delivery_cost, delivery_type, location, userId, res, telegram_id) {
   const stmt = db.prepare(`INSERT INTO orders (name,phone,address,items,total,delivery_cost,user_id) VALUES (?,?,?,?,?,?,?)`);
   stmt.run(name, phone, address || '', JSON.stringify(items||{}), total || 0, delivery_cost || 0, userId, async function(err){
     if(err) {
@@ -868,7 +881,7 @@ function insertOrder(name, phone, address, items, total, delivery_cost, location
     }
 
     // 📩 Отправляем заказ в Telegram админу
-    await sendOrderToTelegram({ name, phone, address, items, total, location, telegram_id });
+    await sendOrderToTelegram({ name, phone, address, items, total, delivery_type, location, telegram_id });
 
     // 📱 Отправляем уведомление клиенту, если он авторизован
     if (telegram_id) {
@@ -1064,6 +1077,31 @@ app.post('/api/admin/orders', (req, res) => {
     }
     res.json({ id: this.lastID });
   });
+});
+
+// --- API: receive receipt PDF and send to admin in Telegram ---
+app.post('/api/orders/:id/receipt', uploadPdf.single('file'), async (req, res) => {
+  if (!ADMIN_CHAT_ID || !process.env.BOT_TOKEN) {
+    return res.status(500).json({ error: 'Telegram not configured' });
+  }
+  if (!req.file) {
+    return res.status(400).json({ error: 'file is required' });
+  }
+
+  try {
+    const orderId = req.params.id;
+    const filename = `receipt-${orderId}.pdf`;
+    await bot.sendDocument(
+      ADMIN_CHAT_ID,
+      req.file.buffer,
+      { caption: `Чек заказа №${orderId}` },
+      { filename, contentType: 'application/pdf' }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error sending receipt PDF to Telegram:', err);
+    res.status(500).json({ error: 'Failed to send receipt' });
+  }
 });
 
 // ✅ ИСПРАВЛЕНО: Добавляем маршрут для корневой страницы

@@ -116,12 +116,15 @@ function showCart() {
 // ============= ОСНОВНОЙ КОД =============
 
 let PRODUCTS = [];
+const PRODUCT_INDEX = {};
 let CATEGORIES = [];
 let currentCategoryId = null;
 let currentPage = 1;
 const itemsPerPage = 12; // Товаров на странице
 
 const cart = JSON.parse(localStorage.getItem('cart')||'{}');
+let deliveryCost = 0;
+let deliveryType = 'delivery';
 
 // Загрузка категорий
 async function loadCategories() {
@@ -165,12 +168,27 @@ async function filterByCategory(categoryId) {
   currentCategoryId = categoryId;
   currentPage = 1; // Сбрасываем на первую страницу
   renderCategories(); // Обновляем активную категорию
+  showProductsSection();
   await loadProducts(categoryId);
   
   // Закрываем мобильное меню после выбора категории
   if (window.innerWidth <= 768) {
     toggleCategoriesMenu();
   }
+}
+
+function showProductsSection() {
+  const section = document.getElementById('products-section');
+  if (section) section.style.display = 'block';
+  const banners = document.getElementById('banners-section');
+  if (banners) banners.style.display = 'none';
+}
+
+function showBannersOnly() {
+  const section = document.getElementById('products-section');
+  if (section) section.style.display = 'none';
+  const banners = document.getElementById('banners-section');
+  if (banners) banners.style.display = 'block';
 }
 
 // Переключение мобильного меню категорий
@@ -200,6 +218,9 @@ async function loadProducts(categoryId = null) {
     const response = await fetch(url);
     if (!response.ok) throw new Error('Ошибка загрузки товаров');
     PRODUCTS = await response.json();
+    PRODUCTS.forEach(p => {
+      PRODUCT_INDEX[p.id] = p;
+    });
     
     // Перемешиваем товары только если показываем все категории
     if (!categoryId) {
@@ -379,7 +400,7 @@ function confirmAddToCart() {
     saveCart(); 
     updateCartCount();
     flashCartCount();
-    showToastNotification(`Добавлено ${quantity} шт. в корзину!`);
+    showToastNotification(`Добавлено ${quantity} в корзину!`);
   }
   
   closeQuantityModal();
@@ -420,13 +441,14 @@ function setQty(id, newQty) {
 
 function renderCart(){
   const itemsBox = document.getElementById('cart-items'); 
+  const deliveryBox = document.getElementById('cart-delivery');
   itemsBox.innerHTML='';
   let total=0, count=0;
   
   for(const idStr in cart){
     const id = Number(idStr); 
     const qty = cart[id];
-    const p = PRODUCTS.find(x=>x.id===id); 
+    const p = PRODUCT_INDEX[id] || PRODUCTS.find(x=>x.id===id); 
     if(!p) continue;
     
     count += qty; 
@@ -457,7 +479,13 @@ function renderCart(){
     itemsBox.appendChild(it);
   }
   
-  document.getElementById('cart-total').textContent = total.toLocaleString('ru-RU') + ' ₸';
+  if (deliveryBox) {
+    const safeDelivery = Number.isFinite(deliveryCost) ? deliveryCost : 0;
+    deliveryBox.textContent = `Доставка: ${safeDelivery.toLocaleString('ru-RU')} ₸`;
+  }
+  
+  const totalWithDelivery = total + (Number.isFinite(deliveryCost) ? deliveryCost : 0);
+  document.getElementById('cart-total').textContent = totalWithDelivery.toLocaleString('ru-RU') + ' ₸';
   
   // Обработчики для кнопок +/-
   document.querySelectorAll('[data-action]').forEach(btn=>{
@@ -538,6 +566,7 @@ renderCart();
 document.getElementById('search').addEventListener('input', e=>{
   const q = e.target.value.trim().toLowerCase();
   const filtered = PRODUCTS.filter(p=> (p.name + ' ').toLowerCase().includes(q));
+  showProductsSection();
   renderProducts(filtered);
 });
 
@@ -545,6 +574,7 @@ document.getElementById('reset').addEventListener('click', ()=>{
   document.getElementById('search').value='';
   currentCategoryId = null;
   renderCategories();
+  showBannersOnly();
   loadProducts();
 });
 
@@ -608,7 +638,6 @@ document.getElementById('checkout').addEventListener('click', async ()=>{
     // Очищаем поля для гостя
     document.getElementById('name').value = '';
     document.getElementById('phone').value = '';
-    document.getElementById('address').value = '';
     
     // Обычная подсказка для гостя
     const desc = document.getElementById('order-description');
@@ -669,11 +698,14 @@ document.getElementById('place').addEventListener('click', async ()=>{
   const orderData = {
     name: name,
     phone: phone,
-    address: address,
-    location: userLocation, // Добавляем координаты если есть
+    address: deliveryType === 'pickup'
+      ? 'Шымкент, ул. С. Сатыбалдиева, 43/1'
+      : address,
+    location: deliveryType === 'pickup' ? STORE_LOCATION : userLocation, // Для самовывоза отправляем локацию магазина
     items: {...cart},
     total: totalWithDelivery,
     delivery_cost: deliveryCost, // Добавляем стоимость доставки
+    delivery_type: deliveryType,
     telegram_id: currentUser?.id || null // Добавляем telegram_id если пользователь авторизован
   };
 
@@ -692,6 +724,11 @@ document.getElementById('place').addEventListener('click', async ()=>{
 
     const result = await response.json();
     console.log('Заказ сохранен с ID:', result.id);
+
+    const cartSnapshot = JSON.parse(JSON.stringify(cart));
+    for (const k in cart) delete cart[k];
+    saveCart();
+    updateCartCount();
 
     // Получаем текущую дату и время
     const now = new Date();
@@ -727,9 +764,9 @@ document.getElementById('place').addEventListener('click', async ()=>{
     `;
 
     let itemCount = 0;
-    for (const idStr in cart) {
+    for (const idStr in cartSnapshot) {
       const id = Number(idStr);
-      const qty = cart[id];
+      const qty = cartSnapshot[id];
       const p = PRODUCTS.find(x => x.id === id);
       if (p) {
         itemCount++;
@@ -737,7 +774,7 @@ document.getElementById('place').addEventListener('click', async ()=>{
         const pricePerUnit = p.price.toLocaleString('ru-RU');
         receiptHTML += `
           <div style="margin-bottom: 8px;">
-            ${itemCount}). ${p.name} / ${qty} шт. х ${pricePerUnit} = ${itemTotal} ₸
+            ${itemCount}). ${p.name} / ${qty} х ${pricePerUnit} = ${itemTotal} ₸
           </div>
         `;
       }
@@ -823,8 +860,34 @@ document.getElementById('place').addEventListener('click', async ()=>{
 
     document.getElementById('modal').style.display = 'none';
 
+    // Автоматически сформировать PDF и отправить админу в Telegram
+    try {
+      const receiptCard = document.getElementById('receipt-card');
+      if (receiptCard && window.html2pdf) {
+        const pdfBlob = await html2pdf()
+          .from(receiptCard)
+          .set({
+            margin: 0,
+            filename: `receipt-${result.id}.pdf`,
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          })
+          .output('blob');
+
+        const formData = new FormData();
+        formData.append('file', pdfBlob, `receipt-${result.id}.pdf`);
+
+        await fetch(`/api/orders/${result.id}/receipt`, {
+          method: 'POST',
+          body: formData
+        });
+      }
+    } catch (err) {
+      console.error('Ошибка отправки PDF админу:', err);
+    }
+
     // Сохраняем данные корзины перед очисткой для отправки в WhatsApp
-    const cartSnapshot = JSON.parse(JSON.stringify(cart));
 
     // Сбрасываем кнопку после успешного оформления
     placeBtn.disabled = false;
@@ -870,7 +933,7 @@ document.getElementById('place').addEventListener('click', async ()=>{
               if (p) {
                 const itemTotal = (p.price * qty).toLocaleString('ru-RU');
                 const pricePerUnit = p.price.toLocaleString('ru-RU');
-                return `<div style="margin-bottom: 8px;">${index + 1}). ${p.name} / ${qty} шт. х ${pricePerUnit} = ${itemTotal} ₸</div>`;
+                return `<div style="margin-bottom: 8px;">${index + 1}). ${p.name} / ${qty} х ${pricePerUnit} = ${itemTotal} ₸</div>`;
               }
               return '';
             }).join('')}
@@ -992,7 +1055,7 @@ document.getElementById('place').addEventListener('click', async ()=>{
         const p = PRODUCTS.find(x => x.id === id);
         if (p) {
           itemNum++;
-          waText += `${itemNum}) ${p.name} / ${qty} шт. x ${p.price.toLocaleString('ru-RU')} = ${(p.price*qty).toLocaleString('ru-RU')} ₸%0A`;
+          waText += `${itemNum}) ${p.name} / ${qty} x ${p.price.toLocaleString('ru-RU')} = ${(p.price*qty).toLocaleString('ru-RU')} ₸%0A`;
         }
       }
       waText += `------------------------%0A`;
@@ -1125,7 +1188,6 @@ function calculateTotal(){
 
 // Геолокация
 let userLocation = null;
-let deliveryCost = 0;
 
 // Координаты магазина "Мерос" в Шымкенте
 const STORE_LOCATION = {
@@ -1186,6 +1248,7 @@ function calculateDeliveryCost(distance) {
 
 // Выбор типа доставки
 function selectDeliveryOption(type) {
+  deliveryType = type;
   const deliveryBtn = document.getElementById('delivery-option');
   const pickupBtn = document.getElementById('pickup-option');
   const deliverySection = document.getElementById('delivery-section');
@@ -1213,6 +1276,7 @@ function selectDeliveryOption(type) {
         STORE_LOCATION.lon
       );
       deliveryCost = calculateDeliveryCost(distance);
+      renderCart();
     }
   } else if (type === 'pickup') {
     // Активировать самовывоз
@@ -1235,6 +1299,7 @@ function selectDeliveryOption(type) {
     
     // Обнулить стоимость доставки для самовывоза
     deliveryCost = 0;
+    renderCart();
   }
 }
 
@@ -1320,6 +1385,7 @@ function initYandexSuggest() {
           );
           
           deliveryCost = calculateDeliveryCost(distance);
+          renderCart();
           
           // Показываем информацию о доставке
           const locationInfo = document.getElementById('location-info');
@@ -1394,6 +1460,7 @@ document.getElementById('get-location').addEventListener('click', function(e) {
       // Рассчитываем расстояние от магазина
       const distance = calculateDistance(STORE_LOCATION.lat, STORE_LOCATION.lon, lat, lon);
       deliveryCost = calculateDeliveryCost(distance);
+      renderCart();
       
       // Показываем координаты и информацию о доставке
       coordinatesSpan.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;

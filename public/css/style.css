@@ -396,7 +396,9 @@ input[type="search"], input{width:100%;padding:10px;border-radius:8px;border:1px
   
   /* Скрываем гамбургер на мобильных */
   .hamburger-btn {
-    display: none !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
   }
   
   .brand {
